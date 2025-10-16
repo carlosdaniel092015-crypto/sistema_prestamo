@@ -1,21 +1,25 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAnalytics } from "firebase/analytics";
 
 // Tu configuración de Firebase
-// Obtén estos datos de Firebase Console -> Project Settings -> General
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROJECT_ID.firebaseapp.com",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_PROJECT_ID.appspot.com",
-  messagingSenderId: "TU_MESSAGING_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyAVXRoD5Q1jpN46s5GLpvjD817fFjB9Xg8",
+  authDomain: "cesar-prestamo.firebaseapp.com",
+  projectId: "cesar-prestamo",
+  storageBucket: "cesar-prestamo.firebasestorage.app",
+  messagingSenderId: "106656114973",
+  appId: "1:106656114973:web:1507f991cea3cbc84699f4",
+  measurementId: "G-JH5S5C8PYF"
 };
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializar Firestore
+// Inicializar Firestore (base de datos)
 export const db = getFirestore(app);
+
+// Inicializar Analytics (opcional)
+export const analytics = getAnalytics(app);
 
 export default app;
