@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw, Undo2 } from 'lucide-react';
+import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 export default function App() {
   const [clientes, setClientes] = useState([]);
-  const [clientesEliminados, setClientesEliminados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [modalPago, setModalPago] = useState({ tipo: null, cliente: null });
+  const [mostrarResumenInteres, setMostrarResumenInteres] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   const [nuevoCliente, setNuevoCliente] = useState({
@@ -38,22 +38,6 @@ export default function App() {
       console.error('Error al cargar clientes:', error);
       setCargando(false);
       alert('Error al conectar con Firebase. Verifica tu conexión.');
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Cargar clientes eliminados desde Firebase en tiempo real
-  useEffect(() => {
-    const q = query(collection(db, 'clientesEliminados'), orderBy('fechaEliminacion', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const eliminadosData = [];
-      snapshot.forEach((doc) => {
-        eliminadosData.push({ id: doc.id, ...doc.data() });
-      });
-      setClientesEliminados(eliminadosData);
-    }, (error) => {
-      console.error('Error al cargar eliminados:', error);
     });
 
     return () => unsubscribe();
@@ -163,7 +147,8 @@ export default function App() {
         hora: hora,
         monto: montoPagado,
         capitalRestante: nuevoCapital,
-        descripcion: descripcion
+        descripcion: descripcion,
+        estatus: 'pagado'
       });
       totalPagadoNuevo += montoPagado;
     } else if (tipoPago === 'interes-capital') {
@@ -190,7 +175,8 @@ export default function App() {
         interesPagado: interesActual,
         abonoCapital: abonoCapital,
         capitalRestante: nuevoCapital,
-        descripcion: `Pago de interés + abono al capital`
+        descripcion: `Pago de interés + abono al capital`,
+        estatus: 'pagado'
       });
       totalPagadoNuevo += montoPagado;
     } else if (tipoPago === 'abono') {
@@ -256,15 +242,7 @@ export default function App() {
     const confirmar = window.confirm(`¿Estás seguro de eliminar a ${cliente.nombre}?`);
     if (confirmar) {
       try {
-        // Guardar con el mismo ID en eliminados
-        await setDoc(doc(db, 'clientesEliminados', clienteId), {
-          ...cliente,
-          fechaEliminacion: new Date().toISOString()
-        });
-        
-        // Eliminar de clientes activos
         await deleteDoc(doc(db, 'clientes', clienteId));
-        
         alert('Cliente eliminado');
       } catch (error) {
         console.error('Error al eliminar cliente:', error);
@@ -273,23 +251,43 @@ export default function App() {
     }
   };
 
-  const restaurarCliente = async (clienteId) => {
-    const cliente = clientesEliminados.find(c => c.id === clienteId);
-    if (cliente) {
-      try {
-        const { fechaEliminacion, ...clienteRestaurado } = cliente;
-        
-        // Restaurar con el mismo ID en clientes activos
-        await setDoc(doc(db, 'clientes', clienteId), clienteRestaurado);
-        
-        // Eliminar de eliminados
-        await deleteDoc(doc(db, 'clientesEliminados', clienteId));
-        
-        alert('Cliente restaurado');
-      } catch (error) {
-        console.error('Error al restaurar cliente:', error);
-        alert('Error al restaurar cliente. Verifica las reglas de Firebase.');
-      }
+  const eliminarPagoInteres = async (clienteId, indexPago) => {
+    const confirmar = window.confirm('¿Estás seguro de eliminar este pago de interés?');
+    if (!confirmar) return;
+
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+
+    try {
+      const nuevoHistorial = cliente.historial.filter((_, idx) => idx !== indexPago);
+      
+      // Recalcular total pagado y quincenas pagadas
+      let totalPagadoNuevo = 0;
+      let quinceanasPagadas = 0;
+      
+      nuevoHistorial.forEach(h => {
+        if (h.tipo === 'interes' || h.tipo === 'interes-capital' || h.tipo === 'abono') {
+          totalPagadoNuevo += h.monto;
+        }
+        if (h.tipo === 'interes' || h.tipo === 'interes-capital') {
+          quinceanasPagadas += 1;
+        }
+        if (h.tipo === 'reenganche') {
+          quinceanasPagadas = 0;
+        }
+      });
+
+      const clienteRef = doc(db, 'clientes', clienteId);
+      await updateDoc(clienteRef, {
+        historial: nuevoHistorial,
+        totalPagado: totalPagadoNuevo,
+        quinceanasPagadas: quinceanasPagadas
+      });
+
+      alert('Pago eliminado exitosamente');
+    } catch (error) {
+      console.error('Error al eliminar pago:', error);
+      alert('Error al eliminar el pago. Verifica las reglas de Firebase.');
     }
   };
 
@@ -315,13 +313,21 @@ export default function App() {
           <p className="text-center text-green-600 text-sm mt-1">🔥 Conectado a Firebase</p>
         </header>
 
-        <div className="mb-6">
+        <div className="mb-6 flex gap-4">
           <button
             onClick={() => setMostrarFormulario(!mostrarFormulario)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition"
           >
             <Plus size={20} />
             Nuevo Cliente
+          </button>
+          
+          <button
+            onClick={() => setMostrarResumenInteres(!mostrarResumenInteres)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-md transition"
+          >
+            <DollarSign size={20} />
+            Resumen de Interés
           </button>
         </div>
 
@@ -364,6 +370,85 @@ export default function App() {
             >
               Agregar Cliente
             </button>
+          </div>
+        )}
+
+        {mostrarResumenInteres && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Resumen de Intereses</h2>
+            
+            {clientes.map(cliente => {
+              const pagosInteres = cliente.historial.filter(h => 
+                h.tipo === 'interes' || h.tipo === 'interes-capital'
+              );
+              
+              if (pagosInteres.length === 0) return null;
+              
+              return (
+                <div key={cliente.id} className="mb-6 border-b pb-6 last:border-b-0">
+                  <h3 className="text-xl font-bold text-indigo-900 mb-4">{cliente.nombre}</h3>
+                  
+                  <div className="space-y-3">
+                    {pagosInteres.map((pago, idx) => {
+                      const indexOriginal = cliente.historial.indexOf(pago);
+                      return (
+                        <div 
+                          key={indexOriginal} 
+                          className="flex items-center justify-between bg-gray-50 p-4 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-sm font-semibold text-gray-700">
+                                {pago.fecha} - {pago.hora}
+                              </span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                pago.estatus === 'pagado' 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {pago.estatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                              </span>
+                            </div>
+                            
+                            <div className="text-sm text-gray-600">
+                              <div className="flex gap-4">
+                                <span>Monto: <strong className="text-blue-600">${pago.monto.toFixed(2)}</strong></span>
+                                {pago.interesPagado && (
+                                  <>
+                                    <span>Interés: <strong className="text-orange-600">${pago.interesPagado.toFixed(2)}</strong></span>
+                                    <span>Abono: <strong className="text-green-600">${pago.abonoCapital.toFixed(2)}</strong></span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="mt-1 text-xs text-gray-500">{pago.descripcion}</div>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => eliminarPagoInteres(cliente.id, indexOriginal)}
+                            className="ml-4 text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition"
+                            title="Eliminar pago"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">Total pagado en intereses:</span>
+                    <span className="text-2xl font-bold text-indigo-600">
+                      ${pagosInteres.reduce((sum, p) => sum + (p.interesPagado || p.monto), 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {clientes.every(c => c.historial.filter(h => h.tipo === 'interes' || h.tipo === 'interes-capital').length === 0) && (
+              <p className="text-center text-gray-500 py-8">No hay pagos de interés registrados</p>
+            )}
           </div>
         )}
 
@@ -487,29 +572,6 @@ export default function App() {
             );
           })}
         </div>
-
-        {clientesEliminados.length > 0 && (
-          <div className="bg-red-50 rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-red-800 mb-4 flex items-center gap-2">
-              <Undo2 size={24} />
-              Clientes Eliminados (Restaurar)
-            </h2>
-            <div className="space-y-2">
-              {clientesEliminados.map(cliente => (
-                <div key={cliente.id} className="flex justify-between items-center bg-white p-4 rounded">
-                  <span className="font-semibold text-gray-800">{cliente.nombre}</span>
-                  <button
-                    onClick={() => restaurarCliente(cliente.id)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center gap-2"
-                  >
-                    <Undo2 size={16} />
-                    Restaurar
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {modalPago.tipo && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
