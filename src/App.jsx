@@ -40,8 +40,12 @@ export default function App() {
 
   // Cargar clientes activos desde Firebase en tiempo real
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuario) {
+      setCargando(false);
+      return;
+    }
 
+    setCargando(true);
     const q = query(collection(db, 'clientes'), orderBy('fechaCreacion', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const clientesData = [];
