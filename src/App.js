@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw, Undo2 } from 'lucide-react';
+import { db } from './firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 export default function App() {
   const [clientes, setClientes] = useState([]);
   const [clientesEliminados, setClientesEliminados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [mostrarResumen, setMostrarResumen] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [modalPago, setModalPago] = useState({ tipo: null, cliente: null });
+  const [cargando, setCargando] = useState(true);
 
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: '',
     montoInicial: '',
     tasaInteres: '5',
-    fechaInicio: '',
-    horaInicio: ''
+    fechaInicio: ''
   });
 
   const [datosPago, setDatosPago] = useState({
@@ -22,6 +23,35 @@ export default function App() {
     fecha: '',
     hora: ''
   });
+
+  // Cargar clientes activos desde Firebase en tiempo real
+  useEffect(() => {
+    const q = query(collection(db, 'clientes'), orderBy('fechaCreacion', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const clientesData = [];
+      snapshot.forEach((doc) => {
+        clientesData.push({ id: doc.id, ...doc.data() });
+      });
+      setClientes(clientesData);
+      setCargando(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Cargar clientes eliminados desde Firebase en tiempo real
+  useEffect(() => {
+    const q = query(collection(db, 'clientesEliminados'), orderBy('fechaEliminacion', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const eliminadosData = [];
+      snapshot.forEach((doc) => {
+        eliminadosData.push({ id: doc.id, ...doc.data() });
+      });
+      setClientesEliminados(eliminadosData);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const ahora = new Date();
@@ -51,41 +81,48 @@ export default function App() {
     return capital * (tasa / 100);
   };
 
-  const agregarCliente = () => {
+  const agregarCliente = async () => {
     if (!nuevoCliente.nombre || !nuevoCliente.montoInicial || !nuevoCliente.fechaInicio) {
       alert('Por favor completa todos los campos');
       return;
     }
 
-    const [fechaISO, horaISO] = nuevoCliente.fechaInicio.split('T');
-    const { fecha, hora } = formatearFechaHora(fechaISO, horaISO);
+    try {
+      const [fechaISO, horaISO] = nuevoCliente.fechaInicio.split('T');
+      const { fecha, hora } = formatearFechaHora(fechaISO, horaISO);
 
-    const cliente = {
-      id: Date.now(),
-      nombre: nuevoCliente.nombre,
-      capitalInicial: parseFloat(nuevoCliente.montoInicial),
-      capitalActual: parseFloat(nuevoCliente.montoInicial),
-      tasaInteres: parseFloat(nuevoCliente.tasaInteres),
-      fechaInicio: fecha,
-      horaInicio: hora,
-      historial: [{
-        tipo: 'inicio',
-        fecha: fecha,
-        hora: hora,
-        monto: parseFloat(nuevoCliente.montoInicial),
-        capitalRestante: parseFloat(nuevoCliente.montoInicial),
-        descripcion: `Préstamo iniciado - Tasa: ${nuevoCliente.tasaInteres}% ${nuevoCliente.tasaInteres === '5' ? 'quincenal' : 'mensual'}`
-      }],
-      totalPagado: 0,
-      quinceanasPagadas: 0
-    };
+      const cliente = {
+        nombre: nuevoCliente.nombre,
+        capitalInicial: parseFloat(nuevoCliente.montoInicial),
+        capitalActual: parseFloat(nuevoCliente.montoInicial),
+        tasaInteres: parseFloat(nuevoCliente.tasaInteres),
+        fechaInicio: fecha,
+        horaInicio: hora,
+        historial: [{
+          tipo: 'inicio',
+          fecha: fecha,
+          hora: hora,
+          monto: parseFloat(nuevoCliente.montoInicial),
+          capitalRestante: parseFloat(nuevoCliente.montoInicial),
+          descripcion: `Préstamo iniciado - Tasa: ${nuevoCliente.tasaInteres}% ${nuevoCliente.tasaInteres === '5' ? 'quincenal' : 'mensual'}`
+        }],
+        totalPagado: 0,
+        quinceanasPagadas: 0,
+        fechaCreacion: new Date().toISOString()
+      };
 
-    setClientes([...clientes, cliente]);
-    setNuevoCliente({ nombre: '', montoInicial: '', tasaInteres: '5', fechaInicio: '', horaInicio: '' });
-    setMostrarFormulario(false);
+      await addDoc(collection(db, 'clientes'), cliente);
+      
+      setNuevoCliente({ nombre: '', montoInicial: '', tasaInteres: '5', fechaInicio: '' });
+      setMostrarFormulario(false);
+      alert('Cliente agregado exitosamente');
+    } catch (error) {
+      console.error('Error al agregar cliente:', error);
+      alert('Error al agregar cliente. Verifica tu conexión.');
+    }
   };
 
-  const registrarPago = (clienteId, tipoPago) => {
+  const registrarPago = async (clienteId, tipoPago) => {
     if (!datosPago.fecha || !datosPago.hora) {
       alert('Por favor ingresa fecha y hora del pago');
       return;
@@ -108,7 +145,6 @@ export default function App() {
       }
 
       quinceanasPagadas += 1;
-      const periodo = cliente.tasaInteres === 5 ? 'quincenal' : 'mensual';
       let descripcion = `Interés pagado ${fecha}`;
       
       if (cliente.tasaInteres === 5 && quinceanasPagadas % 2 === 0) {
@@ -189,36 +225,78 @@ export default function App() {
       quinceanasPagadas = 0;
     }
 
-    const clientesActualizados = clientes.map(c => 
-      c.id === clienteId 
-        ? { ...c, capitalActual: nuevoCapital, historial: nuevoHistorial, totalPagado: totalPagadoNuevo, quinceanasPagadas }
-        : c
-    );
-    
-    setClientes(clientesActualizados);
-    setModalPago({ tipo: null, cliente: null });
-    setDatosPago({ montoPagado: '', fecha: datosPago.fecha, hora: datosPago.hora });
+    try {
+      const clienteRef = doc(db, 'clientes', clienteId);
+      await updateDoc(clienteRef, {
+        capitalActual: nuevoCapital,
+        historial: nuevoHistorial,
+        totalPagado: totalPagadoNuevo,
+        quinceanasPagadas: quinceanasPagadas
+      });
+
+      setModalPago({ tipo: null, cliente: null });
+      setDatosPago({ montoPagado: '', fecha: datosPago.fecha, hora: datosPago.hora });
+      alert('Pago registrado exitosamente');
+    } catch (error) {
+      console.error('Error al registrar pago:', error);
+      alert('Error al registrar el pago. Verifica tu conexión.');
+    }
   };
 
-  const eliminarCliente = (clienteId) => {
+  const eliminarCliente = async (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
     if (!cliente) return;
     
     const confirmar = window.confirm(`¿Estás seguro de eliminar a ${cliente.nombre}?`);
     if (confirmar) {
-      setClientesEliminados([...clientesEliminados, { ...cliente, fechaEliminacion: new Date().toISOString() }]);
-      setClientes(clientes.filter(c => c.id !== clienteId));
+      try {
+        // Agregar a colección de eliminados
+        await addDoc(collection(db, 'clientesEliminados'), {
+          ...cliente,
+          fechaEliminacion: new Date().toISOString()
+        });
+        
+        // Eliminar de clientes activos
+        await deleteDoc(doc(db, 'clientes', clienteId));
+        
+        alert('Cliente eliminado');
+      } catch (error) {
+        console.error('Error al eliminar cliente:', error);
+        alert('Error al eliminar cliente');
+      }
     }
   };
 
-  const restaurarCliente = (clienteId) => {
+  const restaurarCliente = async (clienteId) => {
     const cliente = clientesEliminados.find(c => c.id === clienteId);
     if (cliente) {
-      const { fechaEliminacion, ...clienteRestaurado } = cliente;
-      setClientes([...clientes, clienteRestaurado]);
-      setClientesEliminados(clientesEliminados.filter(c => c.id !== clienteId));
+      try {
+        const { fechaEliminacion, ...clienteRestaurado } = cliente;
+        
+        // Agregar de vuelta a clientes activos
+        await addDoc(collection(db, 'clientes'), clienteRestaurado);
+        
+        // Eliminar de eliminados
+        await deleteDoc(doc(db, 'clientesEliminados', clienteId));
+        
+        alert('Cliente restaurado');
+      } catch (error) {
+        console.error('Error al restaurar cliente:', error);
+        alert('Error al restaurar cliente');
+      }
     }
   };
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-indigo-900 font-semibold">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -228,6 +306,7 @@ export default function App() {
             Sistema de Préstamos César Suárez
           </h1>
           <p className="text-center text-gray-600 mt-2">Gestión profesional de préstamos</p>
+          <p className="text-center text-green-600 text-sm mt-1">🔥 Conectado a Firebase</p>
         </header>
 
         <div className="mb-6">
