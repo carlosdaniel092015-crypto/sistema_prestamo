@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw, LogOut } from 'lucide-react';
+import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw, LogOut, Edit2, Check, X } from 'lucide-react';
 import { db, auth } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -14,6 +14,8 @@ export default function App() {
   const [modalPago, setModalPago] = useState({ tipo: null, cliente: null });
   const [mostrarResumenInteres, setMostrarResumenInteres] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [editandoCliente, setEditandoCliente] = useState(null);
+  const [nuevoNombre, setNuevoNombre] = useState('');
 
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: '',
@@ -118,17 +120,22 @@ export default function App() {
         }],
         totalPagado: 0,
         quinceanasPagadas: 0,
-        fechaCreacion: new Date().toISOString()
+        fechaCreacion: new Date().toISOString(),
+        usuarioId: usuario.uid
       };
 
-      await addDoc(collection(db, 'clientes'), cliente);
+      console.log('Intentando agregar cliente:', cliente);
+      const docRef = await addDoc(collection(db, 'clientes'), cliente);
+      console.log('Cliente agregado con ID:', docRef.id);
       
       setNuevoCliente({ nombre: '', montoInicial: '', tasaInteres: '5', fechaInicio: '' });
       setMostrarFormulario(false);
       alert('Cliente agregado exitosamente');
     } catch (error) {
-      console.error('Error al agregar cliente:', error);
-      alert('Error al agregar cliente. Verifica tu conexión y las reglas de Firebase.');
+      console.error('Error completo al agregar cliente:', error);
+      console.error('Código:', error.code);
+      console.error('Mensaje:', error.message);
+      alert(`Error al agregar cliente: ${error.message}\nCódigo: ${error.code}`);
     }
   };
 
@@ -345,6 +352,37 @@ export default function App() {
     }
   };
 
+  const iniciarEdicionNombre = (cliente) => {
+    setEditandoCliente(cliente.id);
+    setNuevoNombre(cliente.nombre);
+  };
+
+  const cancelarEdicionNombre = () => {
+    setEditandoCliente(null);
+    setNuevoNombre('');
+  };
+
+  const guardarNombreCliente = async (clienteId) => {
+    if (!nuevoNombre.trim()) {
+      alert('El nombre no puede estar vacío');
+      return;
+    }
+
+    try {
+      const clienteRef = doc(db, 'clientes', clienteId);
+      await updateDoc(clienteRef, {
+        nombre: nuevoNombre.trim()
+      });
+      
+      setEditandoCliente(null);
+      setNuevoNombre('');
+      alert('Nombre actualizado exitosamente');
+    } catch (error) {
+      console.error('Error al actualizar nombre:', error);
+      alert('Error al actualizar el nombre: ' + error.message);
+    }
+  };
+
   if (cargandoAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -357,10 +395,23 @@ export default function App() {
   }
 
   // Mostrar login si no hay usuario autenticado
-  if (!usuario) {
+  if (!usuario && !cargandoAuth) {
     return <Login onLoginSuccess={() => {}} />;
   }
 
+  // Mostrar pantalla de carga mientras verifica auth
+  if (cargandoAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-indigo-900 font-semibold">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar pantalla de carga mientras carga datos
   if (cargando) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -543,7 +594,42 @@ export default function App() {
             return (
               <div key={cliente.id} className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">{cliente.nombre}</h3>
+                  {editandoCliente === cliente.id ? (
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={nuevoNombre}
+                        onChange={(e) => setNuevoNombre(e.target.value)}
+                        className="flex-1 border-2 border-indigo-500 rounded-lg px-3 py-1 focus:outline-none"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => guardarNombreCliente(cliente.id)}
+                        className="text-green-600 hover:text-green-800 hover:bg-green-50 p-2 rounded transition"
+                        title="Guardar"
+                      >
+                        <Check size={20} />
+                      </button>
+                      <button
+                        onClick={cancelarEdicionNombre}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded transition"
+                        title="Cancelar"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-1">
+                      <h3 className="text-xl font-bold text-gray-800">{cliente.nombre}</h3>
+                      <button
+                        onClick={() => iniciarEdicionNombre(cliente)}
+                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded transition"
+                        title="Editar nombre"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                    </div>
+                  )}
                   <button
                     onClick={(e) => {
                       e.preventDefault();
