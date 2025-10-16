@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw } from 'lucide-react';
-import { db } from './firebase';
+import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw, LogOut } from 'lucide-react';
+import { db, auth } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import Login from './Login';
 
 export default function App() {
+  const [usuario, setUsuario] = useState(null);
+  const [cargandoAuth, setCargandoAuth] = useState(true);
   const [clientes, setClientes] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
@@ -269,7 +273,12 @@ export default function App() {
     if (!confirmar) return;
 
     const cliente = clientes.find(c => c.id === clienteId);
-    if (!cliente) return;
+    
+    if (!cliente) {
+      alert('Error: Cliente no encontrado. Por favor refresca la página.');
+      window.location.reload();
+      return;
+    }
 
     try {
       const nuevoHistorial = cliente.historial.filter((_, idx) => idx !== indexPago);
