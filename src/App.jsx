@@ -119,6 +119,13 @@ export default function App() {
     }
 
     const cliente = clientes.find(c => c.id === clienteId);
+    
+    if (!cliente) {
+      alert('Error: Cliente no encontrado. Por favor refresca la página.');
+      window.location.reload();
+      return;
+    }
+
     const { fecha, hora } = formatearFechaHora(datosPago.fecha, datosPago.hora);
     const interesActual = calcularInteres(cliente.capitalActual, cliente.tasaInteres);
 
@@ -230,8 +237,10 @@ export default function App() {
       setDatosPago({ montoPagado: '', fecha: datosPago.fecha, hora: datosPago.hora });
       alert('Pago registrado exitosamente');
     } catch (error) {
-      console.error('Error al registrar pago:', error);
-      alert('Error al registrar el pago. Verifica las reglas de Firebase.');
+      console.error('Error completo:', error);
+      console.error('Código de error:', error.code);
+      console.error('Mensaje:', error.message);
+      alert(`Error al registrar el pago: ${error.message}\nCódigo: ${error.code}`);
     }
   };
 
@@ -242,11 +251,15 @@ export default function App() {
     const confirmar = window.confirm(`¿Estás seguro de eliminar a ${cliente.nombre}?`);
     if (confirmar) {
       try {
+        console.log('Intentando eliminar cliente con ID:', clienteId);
         await deleteDoc(doc(db, 'clientes', clienteId));
-        alert('Cliente eliminado');
+        console.log('Cliente eliminado exitosamente');
+        alert('Cliente eliminado exitosamente');
       } catch (error) {
-        console.error('Error al eliminar cliente:', error);
-        alert('Error al eliminar cliente. Verifica las reglas de Firebase.');
+        console.error('Error completo al eliminar:', error);
+        console.error('Código de error:', error.code);
+        console.error('Mensaje:', error.message);
+        alert(`Error al eliminar cliente: ${error.message}\nCódigo: ${error.code}`);
       }
     }
   };
@@ -286,8 +299,10 @@ export default function App() {
 
       alert('Pago eliminado exitosamente');
     } catch (error) {
-      console.error('Error al eliminar pago:', error);
-      alert('Error al eliminar el pago. Verifica las reglas de Firebase.');
+      console.error('Error completo al eliminar pago:', error);
+      console.error('Código de error:', error.code);
+      console.error('Mensaje:', error.message);
+      alert(`Error al eliminar el pago: ${error.message}\nCódigo: ${error.code}`);
     }
   };
 
