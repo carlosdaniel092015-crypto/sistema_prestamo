@@ -30,15 +30,16 @@ export default function App() {
     hora: ''
   });
 
-  // Verificar autenticación
+  // Verificar autenticación - SIN DEPENDENCIA EN USUARIO
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Estado de autenticación actualizado:', user ? user.email : 'No autenticado');
       setUsuario(user);
       setCargandoAuth(false);
     });
 
     return () => unsubscribe();
-  }, [usuario]);
+  }, []); // ✅ Array vacío
 
   // Cargar clientes activos desde Firebase en tiempo real
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [usuario]);
 
   useEffect(() => {
     const ahora = new Date();
@@ -99,6 +100,12 @@ export default function App() {
       return;
     }
 
+    // Verificar que el usuario está autenticado
+    if (!usuario) {
+      alert('Error: No estás autenticado. Por favor inicia sesión.');
+      return;
+    }
+
     try {
       const [fechaISO, horaISO] = nuevoCliente.fechaInicio.split('T');
       const { fecha, hora } = formatearFechaHora(fechaISO, horaISO);
@@ -125,8 +132,10 @@ export default function App() {
       };
 
       console.log('Intentando agregar cliente:', cliente);
+      console.log('UID del usuario:', usuario.uid);
+      
       const docRef = await addDoc(collection(db, 'clientes'), cliente);
-      console.log('Cliente agregado con ID:', docRef.id);
+      console.log('Cliente agregado exitosamente con ID:', docRef.id);
       
       setNuevoCliente({ nombre: '', montoInicial: '', tasaInteres: '5', fechaInicio: '' });
       setMostrarFormulario(false);
@@ -306,7 +315,6 @@ export default function App() {
     try {
       const nuevoHistorial = cliente.historial.filter((_, idx) => idx !== indexPago);
       
-      // Recalcular total pagado y quincenas pagadas
       let totalPagadoNuevo = 0;
       let quinceanasPagadas = 0;
       
@@ -394,24 +402,10 @@ export default function App() {
     );
   }
 
-  // Mostrar login si no hay usuario autenticado
   if (!usuario && !cargandoAuth) {
     return <Login onLoginSuccess={() => {}} />;
   }
 
-  // Mostrar pantalla de carga mientras verifica auth
-  if (cargandoAuth) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-indigo-900 font-semibold">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Mostrar pantalla de carga mientras carga datos
   if (cargando) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
