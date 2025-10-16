@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, DollarSign, TrendingUp, RefreshCw, Undo2 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
 
 export default function App() {
   const [clientes, setClientes] = useState([]);
@@ -34,6 +34,10 @@ export default function App() {
       });
       setClientes(clientesData);
       setCargando(false);
+    }, (error) => {
+      console.error('Error al cargar clientes:', error);
+      setCargando(false);
+      alert('Error al conectar con Firebase. Verifica tu conexión.');
     });
 
     return () => unsubscribe();
@@ -48,6 +52,8 @@ export default function App() {
         eliminadosData.push({ id: doc.id, ...doc.data() });
       });
       setClientesEliminados(eliminadosData);
+    }, (error) => {
+      console.error('Error al cargar eliminados:', error);
     });
 
     return () => unsubscribe();
@@ -118,7 +124,7 @@ export default function App() {
       alert('Cliente agregado exitosamente');
     } catch (error) {
       console.error('Error al agregar cliente:', error);
-      alert('Error al agregar cliente. Verifica tu conexión.');
+      alert('Error al agregar cliente. Verifica tu conexión y las reglas de Firebase.');
     }
   };
 
@@ -239,7 +245,7 @@ export default function App() {
       alert('Pago registrado exitosamente');
     } catch (error) {
       console.error('Error al registrar pago:', error);
-      alert('Error al registrar el pago. Verifica tu conexión.');
+      alert('Error al registrar el pago. Verifica las reglas de Firebase.');
     }
   };
 
@@ -250,8 +256,8 @@ export default function App() {
     const confirmar = window.confirm(`¿Estás seguro de eliminar a ${cliente.nombre}?`);
     if (confirmar) {
       try {
-        // Agregar a colección de eliminados
-        await addDoc(collection(db, 'clientesEliminados'), {
+        // Guardar con el mismo ID en eliminados
+        await setDoc(doc(db, 'clientesEliminados', clienteId), {
           ...cliente,
           fechaEliminacion: new Date().toISOString()
         });
@@ -262,7 +268,7 @@ export default function App() {
         alert('Cliente eliminado');
       } catch (error) {
         console.error('Error al eliminar cliente:', error);
-        alert('Error al eliminar cliente');
+        alert('Error al eliminar cliente. Verifica las reglas de Firebase.');
       }
     }
   };
@@ -273,8 +279,8 @@ export default function App() {
       try {
         const { fechaEliminacion, ...clienteRestaurado } = cliente;
         
-        // Agregar de vuelta a clientes activos
-        await addDoc(collection(db, 'clientes'), clienteRestaurado);
+        // Restaurar con el mismo ID en clientes activos
+        await setDoc(doc(db, 'clientes', clienteId), clienteRestaurado);
         
         // Eliminar de eliminados
         await deleteDoc(doc(db, 'clientesEliminados', clienteId));
@@ -282,7 +288,7 @@ export default function App() {
         alert('Cliente restaurado');
       } catch (error) {
         console.error('Error al restaurar cliente:', error);
-        alert('Error al restaurar cliente');
+        alert('Error al restaurar cliente. Verifica las reglas de Firebase.');
       }
     }
   };
