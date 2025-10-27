@@ -132,12 +132,18 @@ export default function App() {
         capitalDespues: nuevoCapital
       }];
       await updateDoc(doc(db, 'clientes', clienteId), {
-        capitalActual: nuevoCapital,
-        historial: nuevoHistorial
-      });
-      const clienteActualizado = { ...cliente, capitalActual: nuevoCapital, historial: nuevoHistorial };
-      setClientes(clientes.map(c => c.id === clienteId ? clienteActualizado : c));
-      alert('Reenganche realizado exitosamente');
+  capitalActual: nuevoCapital,
+  historial: nuevoHistorial
+});
+
+const clienteActualizado = { ...cliente, capitalActual: nuevoCapital, historial: nuevoHistorial };
+
+// ✅ actualiza también el cliente seleccionado
+setClientes(prev => prev.map(c => c.id === clienteId ? clienteActualizado : c));
+setClienteSeleccionado(clienteActualizado);
+
+alert('Reenganche realizado exitosamente');
+
     } catch (error) {
       alert('Error al realizar el reenganche');
     }
@@ -521,3 +527,4 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
+
