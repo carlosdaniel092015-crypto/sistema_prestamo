@@ -23,9 +23,8 @@ export default function Dashboard({ clientes }) {
     return sum + interes;
   }, 0);
 
-  // Clientes por tipo de tasa
+  // Clientes por tipo de tasa (solo 5% quincenal)
   const clientesQuincenal = clientes.filter(c => c.tasaInteres === 5).length;
-  const clientesMensual = clientes.filter(c => c.tasaInteres === 10).length;
 
   // Clientes con más deuda
   const topDeudores = [...clientes]
@@ -57,12 +56,12 @@ export default function Dashboard({ clientes }) {
     });
   });
 
-  // Ganancia estimada mensual
+  // Ganancia estimada mensual (solo 5% quincenal)
   const gananciaEstimadaMensual = clientes.reduce((sum, c) => {
     if (c.tasaInteres === 5) {
       return sum + (c.capitalActual * 0.10); // 5% quincenal = 10% mensual
     } else {
-      return sum + (c.capitalActual * 0.10); // 10% mensual
+      return sum; // No se calcula nada para otras tasas
     }
   }, 0);
 
@@ -135,7 +134,7 @@ export default function Dashboard({ clientes }) {
             </div>
           </div>
           <div className="text-sm text-gray-500">
-            Basado en tasas actuales
+            Basado en tasa quincenal
           </div>
         </div>
 
@@ -170,7 +169,7 @@ export default function Dashboard({ clientes }) {
         </div>
       </div>
 
-      {/* Distribución por tipo de tasa */}
+      {/* Distribución por tipo de tasa (solo 5% quincenal) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -192,22 +191,6 @@ export default function Dashboard({ clientes }) {
               </div>
               <p className="text-sm text-gray-500 mt-1">
                 {totalClientes > 0 ? ((clientesQuincenal / totalClientes) * 100).toFixed(1) : 0}% del total
-              </p>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-700 font-semibold">10% Mensual</span>
-                <span className="text-green-600 font-bold">{clientesMensual} clientes</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className="bg-green-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${totalClientes > 0 ? (clientesMensual / totalClientes) * 100 : 0}%` }}
-                ></div>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                {totalClientes > 0 ? ((clientesMensual / totalClientes) * 100).toFixed(1) : 0}% del total
               </p>
             </div>
           </div>
@@ -281,7 +264,7 @@ export default function Dashboard({ clientes }) {
                     <div>
                       <p className="font-bold text-gray-800">{cliente.nombre}</p>
                       <p className="text-sm text-gray-500">
-                        Tasa: {cliente.tasaInteres}% {cliente.tasaInteres === 5 ? 'quincenal' : 'mensual'}
+                        Tasa: {cliente.tasaInteres}% {cliente.tasaInteres === 5 ? 'quincenal' : ''}
                       </p>
                     </div>
                   </div>
