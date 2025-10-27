@@ -583,29 +583,9 @@ function FormularioCliente({ onGuardar, onCancelar }) {
 
           <div>
             <label className="block text-gray-700 font-semibold mb-2">Tasa de Interés</label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setForm({...form, tasaInteres: 5})}
-                className={`py-3 rounded-lg font-semibold transition ${
-                  form.tasaInteres === 5
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                5% Quincenal
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({...form, tasaInteres: 10})}
-                className={`py-3 rounded-lg font-semibold transition ${
-                  form.tasaInteres === 10
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                10% Mensual
-              </button>
+            <div className="bg-indigo-100 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-indigo-600">5% Quincenal</p>
+              <p className="text-sm text-gray-600 mt-1">Tasa fija para todos los préstamos</p>
             </div>
           </div>
 
