@@ -87,7 +87,9 @@ export default function App() {
       };
 
       const docRef = await addDoc(collection(db, 'clientes'), clienteData);
-      setClientes([...clientes, { ...clienteData, id: docRef.id }]);
+      const nuevoClienteCompleto = { ...clienteData, id: docRef.id };
+      
+      setClientes(prev => [...prev, nuevoClienteCompleto]);
       setMostrarFormulario(false);
       alert('Cliente agregado exitosamente');
     } catch (error) {
@@ -113,6 +115,14 @@ export default function App() {
         capitalDespues: nuevoCapital
       }];
 
+      // Actualizar en Firestore
+      await updateDoc(doc(db, 'clientes', clienteId), {
+        capitalActual: nuevoCapital,
+        totalPagado: nuevoTotal,
+        historial: nuevoHistorial
+      });
+
+      // Crear objeto actualizado
       const clienteActualizado = {
         ...cliente,
         capitalActual: nuevoCapital,
@@ -120,14 +130,8 @@ export default function App() {
         historial: nuevoHistorial
       };
 
-      await updateDoc(doc(db, 'clientes', clienteId), {
-        capitalActual: nuevoCapital,
-        totalPagado: nuevoTotal,
-        historial: nuevoHistorial
-      });
-
-      const nuevosClientes = clientes.map(c => c.id === clienteId ? clienteActualizado : c);
-      setClientes(nuevosClientes);
+      // Actualizar estado de clientes
+      setClientes(prev => prev.map(c => c.id === clienteId ? clienteActualizado : c));
       
       // Actualizar cliente seleccionado si es el mismo
       if (clienteSeleccionado && clienteSeleccionado.id === clienteId) {
@@ -141,34 +145,45 @@ export default function App() {
     }
   };
 
-  // Reenganche
-  const reenganche = async (clienteId, nuevoCapital) => {
+  // Reenganche - CORREGIDO: Ahora suma al capital actual
+  const reenganche = async (clienteId, montoReenganche) => {
     try {
       const cliente = clientes.find(c => c.id === clienteId);
+      
+      // CORRECCIÓN: Sumar el monto al capital actual
+      const nuevoCapitalTotal = cliente.capitalActual + montoReenganche;
       
       const nuevoHistorial = [...cliente.historial, {
         tipo: 'reenganche',
         fecha: new Date().toLocaleDateString('es-DO'),
         hora: new Date().toLocaleTimeString('es-DO'),
         capitalAnterior: cliente.capitalActual,
-        capitalNuevo: nuevoCapital,
-        capitalDespues: nuevoCapital
+        montoReenganche: montoReenganche,
+        capitalNuevo: nuevoCapitalTotal,
+        capitalDespues: nuevoCapitalTotal
       }];
 
+      // Actualizar en Firestore
       await updateDoc(doc(db, 'clientes', clienteId), {
-        capitalActual: nuevoCapital,
-        capitalInicial: nuevoCapital,
+        capitalActual: nuevoCapitalTotal,
         historial: nuevoHistorial
       });
 
+      // Crear objeto actualizado
       const clienteActualizado = {
         ...cliente,
-        capitalActual: nuevoCapital,
-        capitalInicial: nuevoCapital,
+        capitalActual: nuevoCapitalTotal,
         historial: nuevoHistorial
       };
 
-      setClientes(clientes.map(c => c.id === clienteId ? clienteActualizado : c));
+      // Actualizar estado de clientes
+      setClientes(prev => prev.map(c => c.id === clienteId ? clienteActualizado : c));
+      
+      // Actualizar cliente seleccionado si es el mismo
+      if (clienteSeleccionado && clienteSeleccionado.id === clienteId) {
+        setClienteSeleccionado(clienteActualizado);
+      }
+      
       alert('Reenganche realizado exitosamente');
     } catch (error) {
       console.error('Error al hacer reenganche:', error);
@@ -182,8 +197,9 @@ export default function App() {
 
     try {
       await deleteDoc(doc(db, 'clientes', clienteId));
-      setClientes(clientes.filter(c => c.id !== clienteId));
+      setClientes(prev => prev.filter(c => c.id !== clienteId));
       setClienteSeleccionado(null);
+      setVistaActual('clientes');
       alert('Cliente eliminado exitosamente');
     } catch (error) {
       console.error('Error al eliminar cliente:', error);
@@ -468,10 +484,18 @@ function DetalleCliente({ cliente, onVolver, onRegistrarPago, onReenganche, onEl
                   <p className="text-sm text-gray-600">
                     {h.fecha} {h.hora && `- ${h.hora}`}
                   </p>
+                  {h.tipo === 'reenganche' && (
+                    <p className="text-sm text-orange-600 mt-1">
+                      Capital anterior: ${h.capitalAnterior?.toFixed(2)} + ${h.montoReenganche?.toFixed(2)}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   {h.tipo !== 'reenganche' && (
                     <p className="font-bold text-green-600">${h.monto?.toFixed(2)}</p>
+                  )}
+                  {h.tipo === 'reenganche' && (
+                    <p className="font-bold text-orange-600">+${h.montoReenganche?.toFixed(2)}</p>
                   )}
                   <p className="text-sm text-gray-600">
                     Capital: ${h.capitalDespues?.toFixed(2)}
@@ -697,112 +721,3 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
               onChange={(e) => setMontoInteres(e.target.value)}
               className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-green-500 outline-none"
               placeholder="0.00"
-            />
-          </div>
-
-          {tipoPago === 'interes-capital' && (
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Abono a Capital</label>
-              <input
-                type="number"
-                step="0.01"
-                value={abonoCapital}
-                onChange={(e) => setAbonoCapital(e.target.value)}
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-green-500 outline-none"
-                placeholder="0.00"
-              />
-              <p className="text-sm text-gray-600 mt-1">
-                Capital actual: ${cliente.capitalActual.toFixed(2)}
-              </p>
-            </div>
-          )}
-
-          <div className="flex gap-4 pt-4">
-            <button
-              type="button"
-              onClick={onCerrar}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
-            >
-              Registrar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// Modal Reenganche
-function ModalReenganche({ cliente, onGuardar, onCerrar }) {
-  const [nuevoCapital, setNuevoCapital] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const capital = parseFloat(nuevoCapital);
-    
-    if (!capital || capital <= 0) {
-      alert('Ingresa un monto válido');
-      return;
-    }
-    
-    onGuardar(cliente.id, capital);
-    onCerrar();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-gray-800">Reenganche</h3>
-          <button onClick={onCerrar} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="bg-indigo-50 p-4 rounded-lg mb-6">
-          <p className="text-sm text-gray-600">Capital actual</p>
-          <p className="text-2xl font-bold text-indigo-600">${cliente.capitalActual.toFixed(2)}</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Nuevo Capital</label>
-            <input
-              type="number"
-              step="0.01"
-              value={nuevoCapital}
-              onChange={(e) => setNuevoCapital(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-orange-500 outline-none"
-              placeholder="0.00"
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              Este será el nuevo capital del préstamo
-            </p>
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <button
-              type="button"
-              onClick={onCerrar}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold"
-            >
-              Reenganchar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
