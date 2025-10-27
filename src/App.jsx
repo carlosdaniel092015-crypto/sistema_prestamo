@@ -118,7 +118,7 @@ export default function App() {
     }
   };
 
-  // Reenganche (suma el monto al capital existente)
+  // Reenganche (suma al capital existente)
   const reenganche = async (clienteId, montoReenganche) => {
     try {
       const cliente = clientes.find(c => c.id === clienteId);
@@ -274,46 +274,249 @@ function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
   );
 }
 
-// Formulario de nuevo cliente (solo 5% quincenal)
-function FormularioCliente({ onGuardar, onCancelar }) {
-  const [form, setForm] = useState({ nombre: '', capitalInicial: '', tasaInteres: 5 });
+// ✅ Detalle Cliente corregido
+function DetalleCliente({ cliente, onVolver, onRegistrarPago, onReenganche, onEliminar }) {
+  const [mostrarPago, setMostrarPago] = useState(false);
+  const [mostrarReenganche, setMostrarReenganche] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.nombre || !form.capitalInicial) return alert('Por favor completa todos los campos');
-    onGuardar({ ...form, capitalInicial: parseFloat(form.capitalInicial) });
+  const tasa = cliente?.tasaInteres ?? 5;
+  const capital = cliente?.capitalActual ?? 0;
+  const interes = capital * (tasa / 100);
+  const historial = Array.isArray(cliente.historial) ? cliente.historial : [];
+
+  return (
+    <div>
+      <button
+        onClick={onVolver}
+        className="mb-6 text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-2"
+      >
+        ← Volver a clientes
+      </button>
+
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">{cliente.nombre || 'Sin nombre'}</h2>
+            <p className="text-gray-600">Tasa: {tasa}% quincenal</p>
+          </div>
+          <button
+            onClick={() => onEliminar(cliente.id)}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+          >
+            Eliminar
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-indigo-50 p-4 rounded-lg">
+            <p className="text-sm text-gray-600 mb-1">Capital Actual</p>
+            <p className="text-2xl font-bold text-indigo-600">${capital.toFixed(2)}</p>
+          </div>
+          <div className="bg-orange-50 p-4 rounded-lg">
+            <p className="text-sm text-gray-600 mb-1">Interés a Cobrar</p>
+            <p className="text-2xl font-bold text-orange-600">${interes.toFixed(2)}</p>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <p className="text-sm text-gray-600 mb-1">Total Pagado</p>
+            <p className="text-2xl font-bold text-green-600">${cliente.totalPagado?.toFixed(2) || '0.00'}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={() => setMostrarPago(true)}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+          >
+            <DollarSign size={20} />
+            Registrar Pago
+          </button>
+          <button
+            onClick={() => setMostrarReenganche(true)}
+            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+          >
+            <TrendingUp size={20} />
+            Reenganche
+          </button>
+        </div>
+      </div>
+
+      {/* Historial */}
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <History size={24} />
+          Historial de Operaciones
+        </h3>
+
+        {historial.length === 0 ? (
+          <p className="text-gray-500">Sin movimientos aún</p>
+        ) : (
+          <div className="space-y-3">
+            {historial.slice().reverse().map((h, idx) => (
+              <div key={idx} className="border-l-4 border-indigo-600 pl-4 py-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-semibold text-gray-800">
+                      {h.tipo === 'inicio' && '🎯 Préstamo Inicial'}
+                      {h.tipo === 'interes' && '💰 Pago de Interés'}
+                      {h.tipo === 'interes-capital' && '💎 Pago Interés + Capital'}
+                      {h.tipo === 'reenganche' && '🔄 Reenganche'}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {h.fecha} {h.hora && `- ${h.hora}`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {h.tipo !== 'reenganche' && (
+                      <p className="font-bold text-green-600">${h.monto?.toFixed(2) || '0.00'}</p>
+                    )}
+                    <p className="text-sm text-gray-600">
+                      Capital: ${h.capitalDespues?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {mostrarPago && (
+        <ModalPago cliente={cliente} onGuardar={onRegistrarPago} onCerrar={() => setMostrarPago(false)} />
+      )}
+      {mostrarReenganche && (
+        <ModalReenganche cliente={cliente} onGuardar={onReenganche} onCerrar={() => setMostrarReenganche(false)} />
+      )}
+    </div>
+  );
+}
+
+// ✅ Formulario de nuevo cliente
+function FormularioCliente({ onGuardar, onCancelar }) {
+  const [nombre, setNombre] = useState('');
+  const [capitalInicial, setCapitalInicial] = useState('');
+
+  const guardar = () => {
+    if (!nombre || !capitalInicial) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+    onGuardar({ nombre, capitalInicial: parseFloat(capitalInicial) });
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-gray-800">Nuevo Cliente</h3>
-          <button onClick={onCancelar} className="text-gray-500 hover:text-gray-700"><X size={24} /></button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">Nuevo Cliente</h3>
+        <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="Nombre del cliente"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            type="number"
+            placeholder="Capital inicial"
+            value={capitalInicial}
+            onChange={(e) => setCapitalInicial(e.target.value)}
+            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Nombre</label>
-            <input type="text" value={form.nombre} onChange={(e) => setForm({...form, nombre: e.target.value})}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-indigo-500 outline-none" placeholder="Nombre del cliente" />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Capital Inicial</label>
-            <input type="number" step="0.01" value={form.capitalInicial} onChange={(e) => setForm({...form, capitalInicial: e.target.value})}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-indigo-500 outline-none" placeholder="0.00" />
-          </div>
-          <div className="bg-indigo-50 text-indigo-700 p-4 rounded-lg font-semibold text-center">
-            Tasa de Interés: 5% Quincenal
-          </div>
-          <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onCancelar} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold">
-              Cancelar
-            </button>
-            <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold">
-              Guardar
-            </button>
-          </div>
-        </form>
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onCancelar} className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">
+            Cancelar
+          </button>
+          <button onClick={guardar} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ✅ Modal para pago
+function ModalPago({ cliente, onGuardar, onCerrar }) {
+  const [monto, setMonto] = useState('');
+  const [abonoCapital, setAbonoCapital] = useState('');
+
+  const guardar = () => {
+    if (!monto && !abonoCapital) {
+      alert('Debe ingresar al menos un monto');
+      return;
+    }
+    const montoNum = parseFloat(monto || 0);
+    const abonoNum = parseFloat(abonoCapital || 0);
+    onGuardar(cliente.id, abonoNum > 0 ? 'interes-capital' : 'interes', montoNum + abonoNum, montoNum, abonoNum);
+    onCerrar();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">Registrar Pago</h3>
+        <div className="space-y-3">
+          <input
+            type="number"
+            placeholder="Monto de interés"
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            type="number"
+            placeholder="Abono a capital (opcional)"
+            value={abonoCapital}
+            onChange={(e) => setAbonoCapital(e.target.value)}
+            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onCerrar} className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">
+            Cancelar
+          </button>
+          <button onClick={guardar} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ✅ Modal para reenganche
+function ModalReenganche({ cliente, onGuardar, onCerrar }) {
+  const [monto, setMonto] = useState('');
+
+  const guardar = () => {
+    if (!monto) {
+      alert('Ingrese el monto del reenganche');
+      return;
+    }
+    onGuardar(cliente.id, parseFloat(monto));
+    onCerrar();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">Reenganche</h3>
+        <input
+          type="number"
+          placeholder="Monto a reenganchar"
+          value={monto}
+          onChange={(e) => setMonto(e.target.value)}
+          className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onCerrar} className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">
+            Cancelar
+          </button>
+          <button onClick={guardar} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+            Guardar
+          </button>
+        </div>
       </div>
     </div>
   );
