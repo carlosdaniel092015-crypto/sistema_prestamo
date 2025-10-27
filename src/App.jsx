@@ -126,7 +126,14 @@ export default function App() {
         historial: nuevoHistorial
       });
 
-      setClientes(clientes.map(c => c.id === clienteId ? clienteActualizado : c));
+      const nuevosClientes = clientes.map(c => c.id === clienteId ? clienteActualizado : c);
+      setClientes(nuevosClientes);
+      
+      // Actualizar cliente seleccionado si es el mismo
+      if (clienteSeleccionado && clienteSeleccionado.id === clienteId) {
+        setClienteSeleccionado(clienteActualizado);
+      }
+      
       alert('Pago registrado exitosamente');
     } catch (error) {
       console.error('Error al registrar pago:', error);
