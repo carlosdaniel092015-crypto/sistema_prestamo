@@ -186,10 +186,28 @@ export default function App() {
     alert('Registro eliminado permanentemente');
   };
 
-  const restaurarCliente = (cliente) => {
-    if (!confirm('¿Restaurar este cliente a la lista activa?')) return;
+  const restaurarCliente = (cliente, nuevoMonto, fechaNueva) => {
     const { fechaEliminacion, fechaEliminacionLegible, ...clienteRestaurado } = cliente;
-    guardarClientes([...clientes, clienteRestaurado]);
+    
+    // Actualizar con nuevo capital y agregar al historial
+    const clienteConNuevoCapital = {
+      ...clienteRestaurado,
+      capitalActual: nuevoMonto,
+      historial: [
+        ...clienteRestaurado.historial,
+        {
+          tipo: 'reenganche',
+          fecha: fechaNueva || new Date().toLocaleDateString('es-DO'),
+          hora: new Date().toLocaleTimeString('es-DO'),
+          capitalAnterior: cliente.capitalActual,
+          montoReenganche: nuevoMonto - cliente.capitalActual,
+          capitalDespues: nuevoMonto,
+          nota: 'Restaurado desde historial'
+        }
+      ]
+    };
+    
+    guardarClientes([...clientes, clienteConNuevoCapital]);
     const nuevoHistorial = historialEliminados.filter(c => c.id !== cliente.id);
     guardarHistorialEliminados(nuevoHistorial);
     alert('Cliente restaurado exitosamente');
@@ -1014,4 +1032,5 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
 
