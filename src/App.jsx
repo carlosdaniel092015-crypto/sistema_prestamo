@@ -189,7 +189,12 @@ export default function App() {
   const restaurarCliente = (cliente, nuevoMonto, fechaNueva) => {
     const { fechaEliminacion, fechaEliminacionLegible, ...clienteRestaurado } = cliente;
     
-    // Actualizar con nuevo capital y agregar al historial
+    let fechaFinal = fechaNueva || new Date().toLocaleDateString('es-DO');
+    if (fechaNueva && fechaNueva.includes('-')) {
+      const [year, month, day] = fechaNueva.split('-');
+      fechaFinal = `${day}/${month}/${year}`;
+    }
+    
     const clienteConNuevoCapital = {
       ...clienteRestaurado,
       capitalActual: nuevoMonto,
@@ -197,7 +202,7 @@ export default function App() {
         ...clienteRestaurado.historial,
         {
           tipo: 'reenganche',
-          fecha: fechaNueva || new Date().toLocaleDateString('es-DO'),
+          fecha: fechaFinal,
           hora: new Date().toLocaleTimeString('es-DO'),
           capitalAnterior: cliente.capitalActual,
           montoReenganche: nuevoMonto - cliente.capitalActual,
@@ -911,6 +916,7 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
+
 // ==================== MODAL RESTAURAR ====================
 function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
   const [nuevoMonto, setNuevoMonto] = useState(cliente.capitalActual.toString());
@@ -981,42 +987,12 @@ function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
-  const restaurarCliente = (cliente, nuevoMonto, fechaNueva) => {
-    const { fechaEliminacion, fechaEliminacionLegible, ...clienteRestaurado } = cliente;
-    
-    // Convertir fecha de formato YYYY-MM-DD a DD/MM/YYYY si existe
-    let fechaFinal = fechaNueva || new Date().toLocaleDateString('es-DO');
-    if (fechaNueva && fechaNueva.includes('-')) {
-      const [year, month, day] = fechaNueva.split('-');
-      fechaFinal = `${day}/${month}/${year}`;
-    }
-    
-    // Actualizar con nuevo capital y agregar al historial
-    const clienteConNuevoCapital = {
-      ...clienteRestaurado,
-      capitalActual: nuevoMonto,
-      historial: [
-        ...clienteRestaurado.historial,
-        {
-          tipo: 'reenganche',
-          fecha: fechaFinal,
-          hora: new Date().toLocaleTimeString('es-DO'),
-          capitalAnterior: cliente.capitalActual,
-          montoReenganche: nuevoMonto - cliente.capitalActual,
-          capitalDespues: nuevoMonto,
-          nota: 'Restaurado desde historial'
-        }
-      ]
-    };
-    
-    guardarClientes([...clientes, clienteConNuevoCapital]);
-    const nuevoHistorial = historialEliminados.filter(c => c.id !== cliente.id);
-    guardarHistorialEliminados(nuevoHistorial);
-    alert('Cliente restaurado exitosamente');
-  };
+
 // ==================== HISTORIAL DE CLIENTES ELIMINADOS ====================
 function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar }) {
   const [clienteExpandido, setClienteExpandido] = useState(null);
+  const [mostrarModalRestaurar, setMostrarModalRestaurar] = useState(false);
+  const [clienteARestaurar, setClienteARestaurar] = useState(null);
 
   if (historial.length === 0) {
     return (
@@ -1112,7 +1088,10 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
 
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
-                    onClick={() => onRestaurar(cliente)}
+                    onClick={() => {
+                      setClienteARestaurar(cliente);
+                      setMostrarModalRestaurar(true);
+                    }}
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition text-xs sm:text-sm"
                   >
                     <CheckCircle size={16} />
@@ -1131,9 +1110,21 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
           );
         })}
       </div>
+
+      {mostrarModalRestaurar && clienteARestaurar && (
+        <ModalRestaurar
+          cliente={clienteARestaurar}
+          onGuardar={(nuevoMonto, fecha) => {
+            onRestaurar(clienteARestaurar, nuevoMonto, fecha);
+            setMostrarModalRestaurar(false);
+            setClienteARestaurar(null);
+          }}
+          onCerrar={() => {
+            setMostrarModalRestaurar(false);
+            setClienteARestaurar(null);
+          }}
+        />
+      )}
     </div>
   );
 }
-
-
-
