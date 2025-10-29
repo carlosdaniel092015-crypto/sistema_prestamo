@@ -37,24 +37,25 @@ export default function App() {
     try {
       setLoading(true);
       
-     // Cargar usuario
-     try {
-      const usuarioResult = await window.storage.get('usuario');
-      if (usuarioResult && usuarioResult.value) {
-        setUsuario(JSON.parse(usuarioResult.value));
+      // Cargar usuario
+      try {
+        const usuarioResult = await window.storage.get('usuario');
+        if (usuarioResult && usuarioResult.value) {
+          setUsuario(JSON.parse(usuarioResult.value));
+        }
+      } catch (error) {
+        console.log('No hay usuario guardado');
       }
-    } catch (error) {
-      console.log('No hay usuario guardado');
-    }
-     // Cargar clientes
-     try {
-      const clientesResult = await window.storage.get('clientes');
-      if (clientesResult && clientesResult.value) {
-        setClientes(JSON.parse(clientesResult.value));
+      
+      // Cargar clientes
+      try {
+        const clientesResult = await window.storage.get('clientes');
+        if (clientesResult && clientesResult.value) {
+          setClientes(JSON.parse(clientesResult.value));
+        }
+      } catch (error) {
+        console.log('No hay clientes guardados');
       }
-    } catch (error) {
-      console.log('No hay clientes guardados');
-     }
     } catch (error) {
       console.log('Error cargando datos:', error);
     } finally {
@@ -102,20 +103,12 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
-      // Si no existe usuario, crear uno nuevo
-      const usuarioData = { usuario, contrasena, fechaCreacion: new Date().toISOString() };
-      await window.storage.set('usuario', JSON.stringify(usuarioData));
-      setUsuario(usuarioData);
-      alert('¡Cuenta creada exitosamente!');
-     }
-   } catch (error) {
-     console.error('Error al iniciar sesión:', error);
-     alert('Error al procesar el inicio de sesión. Por favor intenta de nuevo.');
-   }
- };
+      alert('Error al procesar el inicio de sesión. Por favor intenta de nuevo.');
+    }
+  };
 
   const cerrarSesion = async () => {
-    if (confirm('¿Estás seguro de cerrar sesión?')) {
+    if (window.confirm('¿Estás seguro de cerrar sesión?')) {
       try {
         await window.storage.delete('usuario');
         setUsuario(null);
@@ -205,10 +198,11 @@ export default function App() {
 
   // Eliminar cliente
   const eliminarCliente = (clienteId) => {
-    if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
+    if (!window.confirm('¿Estás seguro de eliminar este cliente?')) return;
     const nuevosClientes = clientes.filter(c => c.id !== clienteId);
     guardarDatos(nuevosClientes);
     setClienteSeleccionado(null);
+    setVistaActual('clientes');
   };
 
   // Si no hay usuario, mostrar login
@@ -420,7 +414,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// Dashboard Component (CORREGIDO)
+// Dashboard Component
 function Dashboard({ clientes }) {
   // Validar y limpiar datos
   const clientesValidos = clientes.filter(c => 
@@ -432,18 +426,17 @@ function Dashboard({ clientes }) {
   const capitalInvertido = clientesValidos.reduce((sum, c) => sum + (c.capitalInicial || 0), 0);
   const totalRecaudado = clientesValidos.reduce((sum, c) => sum + (c.totalPagado || 0), 0);
   
-  // CORREGIDO: Intereses del próximo período (quincenal)
+  // Intereses del próximo período (quincenal)
   const interesesProximoPeriodo = clientesValidos.reduce((sum, c) => {
     return sum + (c.capitalActual * (c.tasaInteres / 100));
   }, 0);
 
-  // CORREGIDO: Ganancia mensual estimada (2 períodos quincenales)
+  // Ganancia mensual estimada (2 períodos quincenales)
   const gananciaEstimadaMensual = clientesValidos.reduce((sum, c) => {
-    // 5% quincenal × 2 = 10% mensual
     return sum + (c.capitalActual * 0.10);
   }, 0);
 
-  // CORREGIDO: Total de intereses pagados históricamente
+  // Total de intereses pagados históricamente
   const totalInteresesPagados = clientesValidos.reduce((sum, cliente) => {
     const historial = Array.isArray(cliente.historial) ? cliente.historial : [];
     const pagosInteres = historial.filter(h => 
@@ -457,7 +450,7 @@ function Dashboard({ clientes }) {
     .sort((a, b) => (b.capitalActual || 0) - (a.capitalActual || 0))
     .slice(0, 5);
 
-  // Actividad reciente (últimos 7 días) - CORREGIDO
+  // Actividad reciente (últimos 7 días)
   const hace7Dias = new Date();
   hace7Dias.setDate(hace7Dias.getDate() - 7);
   
@@ -1005,4 +998,3 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
-
