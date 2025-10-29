@@ -98,36 +98,56 @@ export default function App() {
   };
 
   const registrarPago = (clienteId, tipo, monto, interesPagado = 0, abonoCapital = 0, fechaPersonalizada = null) => {
-    const cliente = clientes.find(c => c.id === clienteId);
-    const nuevoCapital = cliente.capitalActual - abonoCapital;
-    const nuevoTotal = cliente.totalPagado + monto;
-    
-    const fechaActual = fechaPersonalizada || new Date().toLocaleDateString('es-DO');
-    const horaActual = new Date().toLocaleTimeString('es-DO');
-    
-    const nuevoHistorial = [...cliente.historial, {
-      tipo,
-      fecha: fechaActual,
-      hora: horaActual,
-      monto,
-      interesPagado,
-      abonoCapital,
-      capitalDespues: nuevoCapital
-    }];
-    
-    const clienteActualizado = { 
-      ...cliente, 
-      capitalActual: nuevoCapital, 
-      totalPagado: nuevoTotal, 
-      historial: nuevoHistorial 
-    };
+  const cliente = clientes.find(c => c.id === clienteId);
+  const nuevoCapital = Math.max(0, cliente.capitalActual - abonoCapital); // Asegurar que no sea negativo
+  const nuevoTotal = cliente.totalPagado + monto;
+  
+  const fechaActual = fechaPersonalizada || new Date().toLocaleDateString('es-DO');
+  const horaActual = new Date().toLocaleTimeString('es-DO');
+  
+  const nuevoHistorial = [...cliente.historial, {
+    tipo,
+    fecha: fechaActual,
+    hora: horaActual,
+    monto,
+    interesPagado,
+    abonoCapital,
+    capitalDespues: nuevoCapital
+  }];
+  
+  const clienteActualizado = { 
+    ...cliente, 
+    capitalActual: nuevoCapital, 
+    totalPagado: nuevoTotal, 
+    historial: nuevoHistorial 
+  };
 
+  // Si el capital llegó a 0, mover al historial automáticamente
+  if (nuevoCapital <= 0) {
+    const clienteConFechaEliminacion = {
+      ...clienteActualizado,
+      fechaEliminacion: new Date().toISOString(),
+      fechaEliminacionLegible: new Date().toLocaleDateString('es-DO'),
+      motivoEliminacion: 'Capital pagado completamente'
+    };
+    guardarHistorialEliminados([...historialEliminados, clienteConFechaEliminacion]);
+    
+    const nuevosClientes = clientes.filter(c => c.id !== clienteId);
+    guardarClientes(nuevosClientes);
+    
+    setClienteSeleccionado(null);
+    setVistaActual('clientes');
+    alert('¡Felicitaciones! El cliente ha pagado completamente su préstamo. Se movió al historial.');
+  } else {
     const nuevosClientes = clientes.map(c => c.id === clienteId ? clienteActualizado : c);
     guardarClientes(nuevosClientes);
     
     if (clienteSeleccionado?.id === clienteId) {
       setClienteSeleccionado(clienteActualizado);
     }
+    alert('Pago registrado exitosamente');
+  }
+};
     alert('Pago registrado exitosamente');
   };
 
@@ -1358,6 +1378,7 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
 
 
 
