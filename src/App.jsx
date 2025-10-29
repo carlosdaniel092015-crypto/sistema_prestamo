@@ -911,7 +911,109 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
+// ==================== MODAL RESTAURAR ====================
+function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
+  const [nuevoMonto, setNuevoMonto] = useState(cliente.capitalActual.toString());
+  const [fechaPersonalizada, setFechaPersonalizada] = useState('');
 
+  const guardar = () => {
+    if (!nuevoMonto) {
+      alert('Ingrese el nuevo monto del capital');
+      return;
+    }
+    
+    onGuardar(parseFloat(nuevoMonto), fechaPersonalizada);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Restaurar Cliente</h3>
+        <p className="text-sm text-gray-600 mb-4">Cliente: <span className="font-semibold">{cliente.nombre}</span></p>
+        
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Fecha de Restauración
+            </label>
+            <input
+              type="date"
+              value={fechaPersonalizada}
+              onChange={(e) => setFechaPersonalizada(e.target.value)}
+              className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+            />
+            <p className="text-xs text-gray-500 mt-1">Deja vacío para usar la fecha actual</p>
+          </div>
+          
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Nuevo Monto del Capital
+            </label>
+            <input
+              type="number"
+              placeholder="Nuevo capital"
+              value={nuevoMonto}
+              onChange={(e) => setNuevoMonto(e.target.value)}
+              className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Capital anterior: ${cliente.capitalActual.toFixed(2)}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+          <button 
+            onClick={onCerrar} 
+            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-sm sm:text-base"
+          >
+            Cancelar
+          </button>
+          <button 
+            onClick={guardar} 
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <CheckCircle size={16} />
+            Restaurar Cliente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+  const restaurarCliente = (cliente, nuevoMonto, fechaNueva) => {
+    const { fechaEliminacion, fechaEliminacionLegible, ...clienteRestaurado } = cliente;
+    
+    // Convertir fecha de formato YYYY-MM-DD a DD/MM/YYYY si existe
+    let fechaFinal = fechaNueva || new Date().toLocaleDateString('es-DO');
+    if (fechaNueva && fechaNueva.includes('-')) {
+      const [year, month, day] = fechaNueva.split('-');
+      fechaFinal = `${day}/${month}/${year}`;
+    }
+    
+    // Actualizar con nuevo capital y agregar al historial
+    const clienteConNuevoCapital = {
+      ...clienteRestaurado,
+      capitalActual: nuevoMonto,
+      historial: [
+        ...clienteRestaurado.historial,
+        {
+          tipo: 'reenganche',
+          fecha: fechaFinal,
+          hora: new Date().toLocaleTimeString('es-DO'),
+          capitalAnterior: cliente.capitalActual,
+          montoReenganche: nuevoMonto - cliente.capitalActual,
+          capitalDespues: nuevoMonto,
+          nota: 'Restaurado desde historial'
+        }
+      ]
+    };
+    
+    guardarClientes([...clientes, clienteConNuevoCapital]);
+    const nuevoHistorial = historialEliminados.filter(c => c.id !== cliente.id);
+    guardarHistorialEliminados(nuevoHistorial);
+    alert('Cliente restaurado exitosamente');
+  };
 // ==================== HISTORIAL DE CLIENTES ELIMINADOS ====================
 function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar }) {
   const [clienteExpandido, setClienteExpandido] = useState(null);
@@ -1032,5 +1134,6 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
 
 
