@@ -16,8 +16,7 @@ import {
   PieChart,
   Calendar,
   AlertCircle,
-  CheckCircle,
-  Clock
+  CheckCircle
 } from 'lucide-react';
 
 // ==================== COMPONENTE PRINCIPAL ====================
@@ -27,13 +26,14 @@ export default function App() {
   const [vistaActual, setVistaActual] = useState('dashboard');
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [historialEliminados, setHistorialEliminados] = useState([]);
 
-  // Simular autenticación (en producción usar Firebase)
   useEffect(() => {
     const usuarioGuardado = localStorage.getItem('usuario');
     if (usuarioGuardado) {
       setUsuario(JSON.parse(usuarioGuardado));
       cargarClientes();
+      cargarHistorialEliminados();
     }
   }, []);
 
@@ -42,12 +42,14 @@ export default function App() {
     setUsuario(user);
     localStorage.setItem('usuario', JSON.stringify(user));
     cargarClientes();
+    cargarHistorialEliminados();
   };
 
   const cerrarSesion = () => {
     setUsuario(null);
     localStorage.removeItem('usuario');
     setClientes([]);
+    setHistorialEliminados([]);
     setVistaActual('dashboard');
   };
 
@@ -58,9 +60,21 @@ export default function App() {
     }
   };
 
+  const cargarHistorialEliminados = () => {
+    const historialGuardado = localStorage.getItem('historialEliminados');
+    if (historialGuardado) {
+      setHistorialEliminados(JSON.parse(historialGuardado));
+    }
+  };
+
   const guardarClientes = (nuevosClientes) => {
     setClientes(nuevosClientes);
     localStorage.setItem('clientes', JSON.stringify(nuevosClientes));
+  };
+
+  const guardarHistorialEliminados = (nuevoHistorial) => {
+    setHistorialEliminados(nuevoHistorial);
+    localStorage.setItem('historialEliminados', JSON.stringify(nuevoHistorial));
   };
 
   const agregarCliente = (nuevoCliente) => {
@@ -146,12 +160,39 @@ export default function App() {
   };
 
   const eliminarCliente = (clienteId) => {
-    if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
+    if (!confirm('¿Estás seguro de eliminar este cliente? Su información se guardará en el historial.')) return;
+    
+    const clienteAEliminar = clientes.find(c => c.id === clienteId);
+    if (clienteAEliminar) {
+      const clienteConFechaEliminacion = {
+        ...clienteAEliminar,
+        fechaEliminacion: new Date().toISOString(),
+        fechaEliminacionLegible: new Date().toLocaleDateString('es-DO')
+      };
+      guardarHistorialEliminados([...historialEliminados, clienteConFechaEliminacion]);
+    }
+    
     const nuevosClientes = clientes.filter(c => c.id !== clienteId);
     guardarClientes(nuevosClientes);
     setClienteSeleccionado(null);
-    setVistaActual('clientes'); // Volver a la lista de clientes
-    alert('Cliente eliminado exitosamente');
+    setVistaActual('clientes');
+    alert('Cliente eliminado. La información se guardó en el historial.');
+  };
+
+  const eliminarDelHistorial = (clienteId) => {
+    if (!confirm('¿Eliminar permanentemente este registro del historial?')) return;
+    const nuevoHistorial = historialEliminados.filter(c => c.id !== clienteId);
+    guardarHistorialEliminados(nuevoHistorial);
+    alert('Registro eliminado permanentemente');
+  };
+
+  const restaurarCliente = (cliente) => {
+    if (!confirm('¿Restaurar este cliente a la lista activa?')) return;
+    const { fechaEliminacion, fechaEliminacionLegible, ...clienteRestaurado } = cliente;
+    guardarClientes([...clientes, clienteRestaurado]);
+    const nuevoHistorial = historialEliminados.filter(c => c.id !== cliente.id);
+    guardarHistorialEliminados(nuevoHistorial);
+    alert('Cliente restaurado exitosamente');
   };
 
   if (!usuario) {
@@ -182,27 +223,28 @@ export default function App() {
       </header>
 
       <nav className="bg-indigo-600 text-white sticky top-[60px] sm:top-[72px] z-30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 flex gap-1">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 flex gap-1 overflow-x-auto">
           <button 
-            onClick={() => { 
-              setVistaActual('dashboard'); 
-              setClienteSeleccionado(null); 
-            }}
-            className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-base ${vistaActual === 'dashboard' ? 'bg-indigo-700' : 'hover:bg-indigo-700'}`}
+            onClick={() => { setVistaActual('dashboard'); setClienteSeleccionado(null); }}
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-base whitespace-nowrap ${vistaActual === 'dashboard' ? 'bg-indigo-700' : 'hover:bg-indigo-700'}`}
           >
             <BarChart3 size={16} className="sm:w-5 sm:h-5" /> Dashboard
           </button>
           <button 
-            onClick={() => { 
-              setVistaActual('clientes'); 
-              setClienteSeleccionado(null); 
-            }}
-            className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-base ${vistaActual === 'clientes' ? 'bg-indigo-700' : 'hover:bg-indigo-700'}`}
+            onClick={() => { setVistaActual('clientes'); setClienteSeleccionado(null); }}
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-base whitespace-nowrap ${vistaActual === 'clientes' ? 'bg-indigo-700' : 'hover:bg-indigo-700'}`}
           >
             <Users size={16} className="sm:w-5 sm:h-5" /> 
-            <span className="hidden sm:inline">Clientes</span>
+            <span className="hidden sm:inline">Clientes ({clientes.length})</span>
             <span className="sm:hidden">({clientes.length})</span>
-            <span className="hidden sm:inline">({clientes.length})</span>
+          </button>
+          <button 
+            onClick={() => { setVistaActual('historial'); setClienteSeleccionado(null); }}
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-base whitespace-nowrap ${vistaActual === 'historial' ? 'bg-indigo-700' : 'hover:bg-indigo-700'}`}
+          >
+            <History size={16} className="sm:w-5 sm:h-5" /> 
+            <span className="hidden sm:inline">Historial ({historialEliminados.length})</span>
+            <span className="sm:hidden">({historialEliminados.length})</span>
           </button>
         </div>
       </nav>
@@ -213,19 +255,19 @@ export default function App() {
         ) : vistaActual === 'clientes' ? (
           <ListaClientes 
             clientes={clientes} 
-            onSeleccionar={(cliente) => { 
-              setClienteSeleccionado(cliente); 
-              setVistaActual('detalle'); 
-            }} 
+            onSeleccionar={(cliente) => { setClienteSeleccionado(cliente); setVistaActual('detalle'); }} 
             onAgregar={() => setMostrarFormulario(true)} 
+          />
+        ) : vistaActual === 'historial' ? (
+          <HistorialEliminados 
+            historial={historialEliminados} 
+            onEliminarDelHistorial={eliminarDelHistorial}
+            onRestaurar={restaurarCliente}
           />
         ) : vistaActual === 'detalle' && clienteSeleccionado ? (
           <DetalleCliente 
             cliente={clienteSeleccionado} 
-            onVolver={() => { 
-              setVistaActual('clientes'); 
-              setClienteSeleccionado(null); 
-            }}
+            onVolver={() => { setVistaActual('clientes'); setClienteSeleccionado(null); }}
             onRegistrarPago={registrarPago} 
             onReenganche={reenganche} 
             onEliminar={eliminarCliente} 
@@ -483,7 +525,8 @@ function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
       </div>
 
       {clientes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 text-center">
+        <div className="bg-
+          <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 text-center">
           <Users size={48} className="sm:w-16 sm:h-16 mx-auto text-gray-400 mb-3 sm:mb-4" />
           <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-2">No hay clientes registrados</h3>
           <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">Comienza agregando tu primer cliente</p>
@@ -847,6 +890,127 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
             Guardar
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== HISTORIAL DE CLIENTES ELIMINADOS ====================
+function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar }) {
+  const [clienteExpandido, setClienteExpandido] = useState(null);
+
+  if (historial.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 text-center">
+        <History size={48} className="sm:w-16 sm:h-16 mx-auto text-gray-400 mb-3 sm:mb-4" />
+        <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-2">Sin clientes en el historial</h3>
+        <p className="text-sm sm:text-base text-gray-500">Los clientes eliminados aparecerán aquí</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-900 mb-1 sm:mb-2">Historial de Clientes</h2>
+        <p className="text-xs sm:text-sm lg:text-base text-gray-600">Clientes eliminados y su información completa</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
+        {historial.map(cliente => {
+          const expandido = clienteExpandido === cliente.id;
+          const tasa = cliente.tasaInteres || 5;
+          const capital = cliente.capitalActual || 0;
+          
+          return (
+            <div key={cliente.id} className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+              <div className="flex justify-between items-start mb-3 sm:mb-4">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">{cliente.nombre}</h3>
+                  <p className="text-xs sm:text-sm text-red-600">Eliminado: {cliente.fechaEliminacionLegible}</p>
+                </div>
+                <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold bg-blue-100 text-blue-700 whitespace-nowrap">
+                  {tasa}%
+                </span>
+              </div>
+
+              <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm mb-3 sm:mb-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Capital al eliminar:</span>
+                  <span className="font-bold text-indigo-600">${capital.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Capital inicial:</span>
+                  <span className="font-bold text-gray-700">${(cliente.capitalInicial || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total pagado:</span>
+                  <span className="font-bold text-green-600">${(cliente.totalPagado || 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => setClienteExpandido(expandido ? null : cliente.id)}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition text-xs sm:text-sm"
+                >
+                  <History size={16} />
+                  {expandido ? 'Ocultar Historial' : 'Ver Historial Completo'}
+                </button>
+
+                {expandido && (
+                  <div className="border-t pt-3 space-y-2 max-h-60 overflow-y-auto">
+                    {cliente.historial?.slice().reverse().map((h, idx) => (
+                      <div key={idx} className="border-l-4 border-indigo-600 pl-3 py-2 bg-gray-50 rounded text-xs">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1">
+                            <span className="font-semibold text-gray-800 block">
+                              {h.tipo === 'inicio' && '🎯 Préstamo Inicial'}
+                              {h.tipo === 'interes' && '💰 Pago de Interés'}
+                              {h.tipo === 'interes-capital' && '💎 Pago Interés + Capital'}
+                              {h.tipo === 'reenganche' && '🔄 Reenganche'}
+                            </span>
+                            <p className="text-gray-600">
+                              {h.fecha} {h.hora && `- ${h.hora}`}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            {h.tipo !== 'reenganche' && (
+                              <p className="font-bold text-green-600">${(h.monto || 0).toFixed(2)}</p>
+                            )}
+                            {h.tipo === 'reenganche' && (
+                              <p className="font-bold text-orange-600">+${(h.montoReenganche || 0).toFixed(2)}</p>
+                            )}
+                            <p className="text-gray-600">
+                              Cap: ${(h.capitalDespues || 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => onRestaurar(cliente)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition text-xs sm:text-sm"
+                  >
+                    <CheckCircle size={16} />
+                    Restaurar
+                  </button>
+                  <button
+                    onClick={() => onEliminarDelHistorial(cliente.id)}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition text-xs sm:text-sm"
+                  >
+                    <X size={16} />
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
