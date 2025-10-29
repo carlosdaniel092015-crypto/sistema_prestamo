@@ -808,8 +808,9 @@ function FormularioCliente({ onGuardar, onCancelar }) {
 
 // ==================== MODAL PAGO ====================
 function ModalPago({ cliente, onGuardar, onCerrar }) {
+  const interesActual = cliente.capitalActual * (cliente.tasaInteres / 100);
   const [tipoPago, setTipoPago] = useState('interes'); // 'interes', 'capital', 'interes-capital'
-  const [monto, setMonto] = useState('');
+  const [monto, setMonto] = useState(interesActual.toFixed(2));
   const [fechaPersonalizada, setFechaPersonalizada] = useState('');
 
   useEffect(() => {
@@ -819,7 +820,16 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
     };
   }, []);
 
-  const interesActual = cliente.capitalActual * (cliente.tasaInteres / 100);
+  // Cuando cambia el tipo de pago
+  useEffect(() => {
+    if (tipoPago === 'interes') {
+      // Auto-llenar con el interés exacto
+      setMonto(interesActual.toFixed(2));
+    } else if (tipoPago === 'capital' || tipoPago === 'interes-capital') {
+      // Limpiar el monto para que el usuario ingrese
+      setMonto('');
+    }
+  }, [tipoPago, interesActual]);
 
   const guardar = () => {
     if (!fechaPersonalizada) {
@@ -964,9 +974,17 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
               placeholder="0.00"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+              className={`w-full border-2 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base ${
+                tipoPago === 'interes' ? 'bg-gray-100 border-gray-300' : 'border-gray-300'
+              }`}
+              disabled={tipoPago === 'interes'}
               required
             />
+            {tipoPago === 'interes' && (
+              <p className="text-xs text-green-600 mt-1 font-semibold">
+                ✓ Monto automático del interés
+              </p>
+            )}
             
             {/* Vista previa del pago */}
             {monto && parseFloat(monto) > 0 && (
@@ -976,7 +994,10 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
                   <p className="text-xs text-gray-600">✓ Interés pagado: ${parseFloat(monto).toFixed(2)}</p>
                 )}
                 {tipoPago === 'capital' && (
-                  <p className="text-xs text-gray-600">✓ Abono a capital: ${parseFloat(monto).toFixed(2)}</p>
+                  <>
+                    <p className="text-xs text-gray-600">✓ Abono a capital: ${parseFloat(monto).toFixed(2)}</p>
+                    <p className="text-xs text-orange-600 mt-1">⚠️ Nuevo capital: ${(cliente.capitalActual - parseFloat(monto)).toFixed(2)}</p>
+                  </>
                 )}
                 {tipoPago === 'interes-capital' && (
                   <>
@@ -985,6 +1006,9 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
                     </p>
                     <p className="text-xs text-gray-600">
                       ✓ Capital: ${Math.max(0, parseFloat(monto) - interesActual).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-orange-600 mt-1">
+                      ⚠️ Nuevo capital: ${(cliente.capitalActual - Math.max(0, parseFloat(monto) - interesActual)).toFixed(2)}
                     </p>
                   </>
                 )}
@@ -1012,7 +1036,6 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
-
 // ==================== MODAL REENGANCHE ====================
 function ModalReenganche({ cliente, onGuardar, onCerrar }) {
   const [monto, setMonto] = useState('');
@@ -1325,5 +1348,6 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
 
 
