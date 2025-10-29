@@ -423,7 +423,6 @@ function Dashboard({ clientes }) {
     return sum + pagosInteres.reduce((s, p) => s + (p.interesPagado || p.monto), 0);
   }, 0);
   
-  // Ganancia Neta = Total Recaudado - Capital que aún está en préstamo
   const gananciaNeta = totalRecaudado - capitalTotal;
 
   const topDeudores = [...clientes].sort((a, b) => b.capitalActual - a.capitalActual).slice(0, 5);
@@ -538,8 +537,7 @@ function Dashboard({ clientes }) {
 // ==================== LISTA CLIENTES ====================
 function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Clientes Activos</h2>
         <button 
           onClick={onAgregar} 
@@ -736,6 +734,13 @@ function FormularioCliente({ onGuardar, onCancelar }) {
   const [nombre, setNombre] = useState('');
   const [capitalInicial, setCapitalInicial] = useState('');
 
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   const guardar = () => {
     if (!nombre || !capitalInicial) {
       alert('Por favor completa todos los campos');
@@ -745,36 +750,53 @@ function FormularioCliente({ onGuardar, onCancelar }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Nuevo Cliente</h3>
-        <div className="space-y-2 sm:space-y-3">
-          <input
-            type="text"
-            placeholder="Nombre del cliente"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
-          />
-          <input
-            type="number"
-            placeholder="Capital inicial"
-            value={capitalInicial}
-            onChange={(e) => setCapitalInicial(e.target.value)}
-            className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
-          />
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md my-8 animate-[slideDown_0.2s_ease-out]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-800">Nuevo Cliente</h3>
+          <button 
+            onClick={onCancelar}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <X size={24} />
+          </button>
         </div>
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+        
+        <div className="space-y-3 sm:space-y-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Nombre del cliente</label>
+            <input
+              type="text"
+              placeholder="Nombre completo"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+            />
+          </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Capital inicial</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={capitalInicial}
+              onChange={(e) => setCapitalInicial(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+            />
+          </div>
+        </div>
+        
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
           <button 
             onClick={onCancelar} 
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-sm sm:text-base"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm sm:text-base font-semibold"
           >
             Cancelar
           </button>
           <button 
             onClick={guardar} 
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm sm:text-base"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
           >
+            <PlusCircle size={16} />
             Guardar
           </button>
         </div>
@@ -783,7 +805,7 @@ function FormularioCliente({ onGuardar, onCancelar }) {
   );
 }
 
-/ ==================== MODAL PAGO ====================
+// ==================== MODAL PAGO ====================
 function ModalPago({ cliente, onGuardar, onCerrar }) {
   const [monto, setMonto] = useState('');
   const [abonoCapital, setAbonoCapital] = useState('');
@@ -885,6 +907,13 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
   const [monto, setMonto] = useState('');
   const [fechaPersonalizada, setFechaPersonalizada] = useState('');
 
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   const guardar = () => {
     if (!monto) {
       alert('Ingrese el monto del reenganche');
@@ -902,39 +931,53 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Reenganche</h3>
-        <div className="space-y-2 sm:space-y-3">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md my-8 animate-[slideDown_0.2s_ease-out]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-800">Reenganche</h3>
+          <button 
+            onClick={onCerrar}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Fecha (opcional)</label>
             <input
               type="date"
               value={fechaPersonalizada}
               onChange={(e) => setFechaPersonalizada(e.target.value)}
-              className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-orange-500 transition text-sm sm:text-base"
             />
             <p className="text-xs text-gray-500 mt-1">Deja vacío para usar la fecha actual</p>
           </div>
-          <input
-            type="number"
-            placeholder="Monto a reenganchar"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
-          />
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Monto a reenganchar</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-orange-500 transition text-sm sm:text-base"
+            />
+          </div>
         </div>
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+        
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
           <button 
             onClick={onCerrar} 
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-sm sm:text-base"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm sm:text-base font-semibold"
           >
             Cancelar
           </button>
           <button 
             onClick={guardar} 
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm sm:text-base"
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
           >
+            <TrendingUp size={16} />
             Guardar
           </button>
         </div>
@@ -948,6 +991,13 @@ function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
   const [nuevoMonto, setNuevoMonto] = useState(cliente.capitalActual.toString());
   const [fechaPersonalizada, setFechaPersonalizada] = useState('');
 
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   const guardar = () => {
     if (!nuevoMonto) {
       alert('Ingrese el nuevo monto del capital');
@@ -958,12 +1008,22 @@ function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Restaurar Cliente</h3>
-        <p className="text-sm text-gray-600 mb-4">Cliente: <span className="font-semibold">{cliente.nombre}</span></p>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md my-8 animate-[slideDown_0.2s_ease-out]">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-800">Restaurar Cliente</h3>
+            <p className="text-sm text-gray-600 mt-1">Cliente: <span className="font-semibold">{cliente.nombre}</span></p>
+          </div>
+          <button 
+            onClick={onCerrar}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <X size={24} />
+          </button>
+        </div>
         
-        <div className="space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
               Fecha de Restauración
@@ -972,7 +1032,7 @@ function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
               type="date"
               value={fechaPersonalizada}
               onChange={(e) => setFechaPersonalizada(e.target.value)}
-              className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-green-500 transition text-sm sm:text-base"
             />
             <p className="text-xs text-gray-500 mt-1">Deja vacío para usar la fecha actual</p>
           </div>
@@ -983,10 +1043,10 @@ function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
             </label>
             <input
               type="number"
-              placeholder="Nuevo capital"
+              placeholder="0.00"
               value={nuevoMonto}
               onChange={(e) => setNuevoMonto(e.target.value)}
-              className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-green-500 transition text-sm sm:text-base"
             />
             <p className="text-xs text-gray-500 mt-1">
               Capital anterior: ${cliente.capitalActual.toFixed(2)}
@@ -994,16 +1054,16 @@ function ModalRestaurar({ cliente, onGuardar, onCerrar }) {
           </div>
         </div>
         
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
           <button 
             onClick={onCerrar} 
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-sm sm:text-base"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm sm:text-base font-semibold"
           >
             Cancelar
           </button>
           <button 
             onClick={guardar} 
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 text-sm sm:text-base font-semibold"
           >
             <CheckCircle size={16} />
             Restaurar Cliente
@@ -1048,7 +1108,7 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
               <div className="flex justify-between items-start mb-3 sm:mb-4">
                 <div className="flex-1 min-w-0 pr-2">
                   <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">{cliente.nombre}</h3>
-                  <p className="text-xs sm:text-sm text-red-600">Eliminado: {cliente.fechaEliminacionLegible}</p>
+                  <p className="text-xs sm:text-smtext-red-600">Eliminado: {cliente.fechaEliminacionLegible}</p>
                 </div>
                 <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold bg-blue-100 text-blue-700 whitespace-nowrap">
                   {tasa}%
@@ -1154,4 +1214,3 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
-
