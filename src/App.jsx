@@ -537,7 +537,8 @@ function Dashboard({ clientes }) {
 // ==================== LISTA CLIENTES ====================
 function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Clientes Activos</h2>
         <button 
           onClick={onAgregar} 
@@ -1108,7 +1109,7 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
               <div className="flex justify-between items-start mb-3 sm:mb-4">
                 <div className="flex-1 min-w-0 pr-2">
                   <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">{cliente.nombre}</h3>
-                  <p className="text-xs sm:text-smtext-red-600">Eliminado: {cliente.fechaEliminacionLegible}</p>
+                  <p className="text-xs sm:text-sm text-red-600">Eliminado: {cliente.fechaEliminacionLegible}</p>
                 </div>
                 <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold bg-blue-100 text-blue-700 whitespace-nowrap">
                   {tasa}%
@@ -1214,3 +1215,4 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
