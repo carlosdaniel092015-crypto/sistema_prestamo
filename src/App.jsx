@@ -75,7 +75,6 @@ export default function App() {
 
   const iniciarSesion = async (usuario, contrasena) => {
     try {
-      // Intentar obtener el usuario guardado
       let usuarioGuardado = null;
       
       try {
@@ -88,14 +87,12 @@ export default function App() {
       }
 
       if (usuarioGuardado) {
-        // Ya existe un usuario, verificar credenciales
         if (usuarioGuardado.usuario === usuario && usuarioGuardado.contrasena === contrasena) {
           setUsuario(usuarioGuardado);
         } else {
           alert('Usuario o contraseña incorrectos');
         }
       } else {
-        // Primera vez, crear nuevo usuario
         const usuarioData = { usuario, contrasena, fechaCreacion: new Date().toISOString() };
         await window.storage.set('usuario', JSON.stringify(usuarioData));
         setUsuario(usuarioData);
@@ -118,7 +115,6 @@ export default function App() {
     }
   };
 
-  // Agregar nuevo cliente
   const agregarCliente = (nuevoCliente) => {
     const clienteData = {
       ...nuevoCliente,
@@ -138,7 +134,6 @@ export default function App() {
     setMostrarFormulario(false);
   };
 
-  // Registrar pago
   const registrarPago = (clienteId, tipo, monto, interesPagado = 0, abonoCapital = 0, fechaPago) => {
     const cliente = clientes.find(c => c.id === clienteId);
     if (!cliente) return;
@@ -170,7 +165,6 @@ export default function App() {
     }
   };
 
-  // Reenganche
   const reenganche = (clienteId, montoReenganche, fechaReenganche) => {
     const cliente = clientes.find(c => c.id === clienteId);
     if (!cliente) return;
@@ -196,7 +190,6 @@ export default function App() {
     setClienteSeleccionado(clienteActualizado);
   };
 
-  // Eliminar cliente
   const eliminarCliente = (clienteId) => {
     if (!window.confirm('¿Estás seguro de eliminar este cliente?')) return;
     const nuevosClientes = clientes.filter(c => c.id !== clienteId);
@@ -205,7 +198,6 @@ export default function App() {
     setVistaActual('clientes');
   };
 
-  // Si no hay usuario, mostrar login
   if (!usuario) {
     return <LoginScreen onLogin={iniciarSesion} />;
   }
@@ -223,7 +215,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header Responsive */}
       <header className="bg-white shadow-lg sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
           <div className="flex justify-between items-center">
@@ -253,7 +244,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Navigation - Desktop */}
       <nav className="hidden md:block bg-indigo-600 text-white sticky top-[73px] z-30">
         <div className="max-w-7xl mx-auto px-4 flex gap-1">
           <button 
@@ -271,7 +261,6 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Navigation - Mobile */}
       {menuAbierto && (
         <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setMenuAbierto(false)}>
           <div className="bg-white w-64 h-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -296,7 +285,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-2 sm:px-4 py-3 md:py-6">
         {vistaActual === 'dashboard' ? (
           <Dashboard clientes={clientes} />
@@ -324,7 +312,6 @@ export default function App() {
   );
 }
 
-// Login Screen
 function LoginScreen({ onLogin }) {
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -414,9 +401,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// Dashboard Component
 function Dashboard({ clientes }) {
-  // Validar y limpiar datos
   const clientesValidos = clientes.filter(c => 
     c && typeof c.capitalActual === 'number' && typeof c.tasaInteres === 'number'
   );
@@ -426,17 +411,14 @@ function Dashboard({ clientes }) {
   const capitalInvertido = clientesValidos.reduce((sum, c) => sum + (c.capitalInicial || 0), 0);
   const totalRecaudado = clientesValidos.reduce((sum, c) => sum + (c.totalPagado || 0), 0);
   
-  // Intereses del próximo período (quincenal)
   const interesesProximoPeriodo = clientesValidos.reduce((sum, c) => {
     return sum + (c.capitalActual * (c.tasaInteres / 100));
   }, 0);
 
-  // Ganancia mensual estimada (2 períodos quincenales)
   const gananciaEstimadaMensual = clientesValidos.reduce((sum, c) => {
     return sum + (c.capitalActual * 0.10);
   }, 0);
 
-  // Total de intereses pagados históricamente
   const totalInteresesPagados = clientesValidos.reduce((sum, cliente) => {
     const historial = Array.isArray(cliente.historial) ? cliente.historial : [];
     const pagosInteres = historial.filter(h => 
@@ -445,12 +427,10 @@ function Dashboard({ clientes }) {
     return sum + pagosInteres.reduce((s, p) => s + (p.interesPagado || p.monto || 0), 0);
   }, 0);
 
-  // Top 5 deudores
   const topDeudores = [...clientesValidos]
     .sort((a, b) => (b.capitalActual || 0) - (a.capitalActual || 0))
     .slice(0, 5);
 
-  // Actividad reciente (últimos 7 días)
   const hace7Dias = new Date();
   hace7Dias.setDate(hace7Dias.getDate() - 7);
   
@@ -468,7 +448,7 @@ function Dashboard({ clientes }) {
             }
           }
         } catch (error) {
-          // Ignorar fechas con formato incorrecto
+          // Ignorar
         }
       }
     });
@@ -576,7 +556,6 @@ function Dashboard({ clientes }) {
         )}
       </div>
 
-      {/* Ganancia Neta */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-lg p-4 md:p-6 text-white">
         <h3 className="text-xl md:text-2xl font-bold mb-4">💡 Resumen Financiero</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -598,7 +577,6 @@ function Dashboard({ clientes }) {
   );
 }
 
-// Lista de Clientes
 function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
   return (
     <div>
@@ -666,7 +644,6 @@ function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
   );
 }
 
-// Detalle Cliente
 function DetalleCliente({ cliente, onVolver, onRegistrarPago, onReenganche, onEliminar }) {
   const [mostrarPago, setMostrarPago] = useState(false);
   const [mostrarReenganche, setMostrarReenganche] = useState(false);
@@ -784,7 +761,6 @@ function DetalleCliente({ cliente, onVolver, onRegistrarPago, onReenganche, onEl
   );
 }
 
-// Formulario Cliente
 function FormularioCliente({ onGuardar, onCancelar }) {
   const [nombre, setNombre] = useState('');
   const [capitalInicial, setCapitalInicial] = useState('');
@@ -840,7 +816,6 @@ function FormularioCliente({ onGuardar, onCancelar }) {
   );
 }
 
-// Modal Pago con fecha
 function ModalPago({ cliente, onGuardar, onCerrar }) {
   const [monto, setMonto] = useState('');
   const [abonoCapital, setAbonoCapital] = useState('');
@@ -928,7 +903,6 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
   );
 }
 
-// Modal Reenganche con fecha
 function ModalReenganche({ cliente, onGuardar, onCerrar }) {
   const [monto, setMonto] = useState('');
   const [fechaReenganche, setFechaReenganche] = useState(new Date().toISOString().split('T')[0]);
@@ -997,4 +971,3 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
       </div>
     </div>
   );
-}
