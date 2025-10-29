@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   PlusCircle, 
@@ -14,31 +14,77 @@ import {
   Clock,
   PieChart,
   Menu,
-  X
+  X,
+  User
 } from 'lucide-react';
 
 // Componente Principal
 export default function App() {
-  const [clientes, setClientes] = useState([
-    {
-      id: '1',
-      nombre: 'Juan Pérez',
-      capitalInicial: 10000,
-      capitalActual: 10000,
-      totalPagado: 0,
-      tasaInteres: 5,
-      historial: [{
-        tipo: 'inicio',
-        fecha: '25/10/2025',
-        monto: 10000,
-        capitalDespues: 10000
-      }]
-    }
-  ]);
+  const [clientes, setClientes] = useState([]);
+  const [usuario, setUsuario] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [vistaActual, setVistaActual] = useState('dashboard');
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
+
+  // Cargar datos al iniciar
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    try {
+      setLoading(true);
+      
+      // Cargar usuario
+      const usuarioResult = await window.storage.get('usuario');
+      if (usuarioResult) {
+        setUsuario(JSON.parse(usuarioResult.value));
+      }
+
+      // Cargar clientes
+      const clientesResult = await window.storage.get('clientes');
+      if (clientesResult) {
+        setClientes(JSON.parse(clientesResult.value));
+      }
+    } catch (error) {
+      console.log('Primera vez usando la app, no hay datos guardados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const guardarDatos = async (nuevosClientes) => {
+    try {
+      await window.storage.set('clientes', JSON.stringify(nuevosClientes));
+      setClientes(nuevosClientes);
+    } catch (error) {
+      console.error('Error guardando datos:', error);
+      alert('Error al guardar los datos');
+    }
+  };
+
+  const iniciarSesion = async (nombre, email) => {
+    try {
+      const usuarioData = { nombre, email };
+      await window.storage.set('usuario', JSON.stringify(usuarioData));
+      setUsuario(usuarioData);
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+    }
+  };
+
+  const cerrarSesion = async () => {
+    if (confirm('¿Estás seguro de cerrar sesión?')) {
+      try {
+        await window.storage.delete('usuario');
+        setUsuario(null);
+      } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+      }
+    }
+  };
 
   // Agregar nuevo cliente
   const agregarCliente = (nuevoCliente) => {
@@ -46,23 +92,26 @@ export default function App() {
       ...nuevoCliente,
       id: Date.now().toString(),
       tasaInteres: 5,
-      capitalActual: nuevoCliente.capitalInicial,
+      capitalActual: parseFloat(nuevoCliente.capitalInicial) || 0,
       totalPagado: 0,
       historial: [{
         tipo: 'inicio',
         fecha: new Date().toLocaleDateString('es-DO'),
-        monto: nuevoCliente.capitalInicial,
-        capitalDespues: nuevoCliente.capitalInicial
+        monto: parseFloat(nuevoCliente.capitalInicial) || 0,
+        capitalDespues: parseFloat(nuevoCliente.capitalInicial) || 0
       }]
     };
-    setClientes([...clientes, clienteData]);
+    const nuevosClientes = [...clientes, clienteData];
+    guardarDatos(nuevosClientes);
     setMostrarFormulario(false);
   };
 
   // Registrar pago
   const registrarPago = (clienteId, tipo, monto, interesPagado = 0, abonoCapital = 0, fechaPago) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    const nuevoCapital = cliente.capitalActual - abonoCapital;
+    if (!cliente) return;
+
+    const nuevoCapital = Math.max(0, cliente.capitalActual - abonoCapital);
     const nuevoTotal = cliente.totalPagado + monto;
     const nuevoHistorial = [...cliente.historial, {
       tipo,
@@ -73,19 +122,27 @@ export default function App() {
       abonoCapital,
       capitalDespues: nuevoCapital
     }];
+    
     const clienteActualizado = { 
       ...cliente, 
       capitalActual: nuevoCapital, 
       totalPagado: nuevoTotal, 
       historial: nuevoHistorial 
     };
-    setClientes(clientes.map(c => c.id === clienteId ? clienteActualizado : c));
-    if (clienteSeleccionado?.id === clienteId) setClienteSeleccionado(clienteActualizado);
+    
+    const nuevosClientes = clientes.map(c => c.id === clienteId ? clienteActualizado : c);
+    guardarDatos(nuevosClientes);
+    
+    if (clienteSeleccionado?.id === clienteId) {
+      setClienteSeleccionado(clienteActualizado);
+    }
   };
 
   // Reenganche
   const reenganche = (clienteId, montoReenganche, fechaReenganche) => {
     const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+
     const nuevoCapital = cliente.capitalActual + montoReenganche;
     const nuevoHistorial = [...cliente.historial, {
       tipo: 'reenganche',
@@ -95,21 +152,41 @@ export default function App() {
       montoReenganche,
       capitalDespues: nuevoCapital
     }];
+    
     const clienteActualizado = { 
       ...cliente, 
       capitalActual: nuevoCapital, 
       historial: nuevoHistorial 
     };
-    setClientes(clientes.map(c => c.id === clienteId ? clienteActualizado : c));
+    
+    const nuevosClientes = clientes.map(c => c.id === clienteId ? clienteActualizado : c);
+    guardarDatos(nuevosClientes);
     setClienteSeleccionado(clienteActualizado);
   };
 
   // Eliminar cliente
   const eliminarCliente = (clienteId) => {
     if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
-    setClientes(clientes.filter(c => c.id !== clienteId));
+    const nuevosClientes = clientes.filter(c => c.id !== clienteId);
+    guardarDatos(nuevosClientes);
     setClienteSeleccionado(null);
   };
+
+  // Si no hay usuario, mostrar login
+  if (!usuario) {
+    return <LoginScreen onLogin={iniciarSesion} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -126,12 +203,15 @@ export default function App() {
               </button>
               <div>
                 <h1 className="text-xl md:text-3xl font-bold text-indigo-900">Sistema de Préstamos</h1>
-                <p className="text-xs md:text-sm text-gray-600">César Suárez</p>
+                <p className="text-xs md:text-sm text-gray-600">{usuario.nombre}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
-              <span className="hidden sm:inline text-sm md:text-base text-gray-700">usuario@email.com</span>
-              <button className="flex items-center gap-1 md:gap-2 bg-red-600 hover:bg-red-700 text-white px-2 md:px-4 py-2 rounded-lg text-sm md:text-base">
+              <span className="hidden sm:inline text-sm md:text-base text-gray-700">{usuario.email}</span>
+              <button 
+                onClick={cerrarSesion}
+                className="flex items-center gap-1 md:gap-2 bg-red-600 hover:bg-red-700 text-white px-2 md:px-4 py-2 rounded-lg text-sm md:text-base"
+              >
                 <LogOut size={16} className="md:w-5 md:h-5" /> 
                 <span className="hidden sm:inline">Salir</span>
               </button>
@@ -158,7 +238,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Navigation - Mobile (Slide-in menu) */}
+      {/* Navigation - Mobile */}
       {menuAbierto && (
         <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setMenuAbierto(false)}>
           <div className="bg-white w-64 h-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -211,16 +291,133 @@ export default function App() {
   );
 }
 
-// Dashboard Component
+// Login Screen
+function LoginScreen({ onLogin }) {
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+
+  const handleLogin = () => {
+    if (!nombre || !email) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+    if (!email.includes('@')) {
+      alert('Por favor ingresa un email válido');
+      return;
+    }
+    onLogin(nombre, email);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="text-indigo-600" size={32} />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Sistema de Préstamos</h1>
+          <p className="text-gray-600">Ingresa tus datos para continuar</p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+            <input
+              type="text"
+              placeholder="César Suárez"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              placeholder="cesar@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <button
+            onClick={handleLogin}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold mt-6"
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Tus datos se guardarán localmente en este dispositivo
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Dashboard Component (CORREGIDO)
 function Dashboard({ clientes }) {
-  const totalClientes = clientes.length;
-  const capitalTotal = clientes.reduce((sum, c) => sum + c.capitalActual, 0);
-  const capitalInvertido = clientes.reduce((sum, c) => sum + c.capitalInicial, 0);
-  const totalRecaudado = clientes.reduce((sum, c) => sum + c.totalPagado, 0);
-  const interesesTotales = clientes.reduce((sum, c) => sum + (c.capitalActual * (c.tasaInteres / 100)), 0);
-  const gananciaEstimadaMensual = clientes.reduce((sum, c) => sum + (c.capitalActual * 0.10), 0);
+  // Validar y limpiar datos
+  const clientesValidos = clientes.filter(c => 
+    c && typeof c.capitalActual === 'number' && typeof c.tasaInteres === 'number'
+  );
+
+  const totalClientes = clientesValidos.length;
+  const capitalTotal = clientesValidos.reduce((sum, c) => sum + (c.capitalActual || 0), 0);
+  const capitalInvertido = clientesValidos.reduce((sum, c) => sum + (c.capitalInicial || 0), 0);
+  const totalRecaudado = clientesValidos.reduce((sum, c) => sum + (c.totalPagado || 0), 0);
   
-  const topDeudores = [...clientes].sort((a, b) => b.capitalActual - a.capitalActual).slice(0, 5);
+  // CORREGIDO: Intereses del próximo período (quincenal)
+  const interesesProximoPeriodo = clientesValidos.reduce((sum, c) => {
+    return sum + (c.capitalActual * (c.tasaInteres / 100));
+  }, 0);
+
+  // CORREGIDO: Ganancia mensual estimada (2 períodos quincenales)
+  const gananciaEstimadaMensual = clientesValidos.reduce((sum, c) => {
+    // 5% quincenal × 2 = 10% mensual
+    return sum + (c.capitalActual * 0.10);
+  }, 0);
+
+  // CORREGIDO: Total de intereses pagados históricamente
+  const totalInteresesPagados = clientesValidos.reduce((sum, cliente) => {
+    const historial = Array.isArray(cliente.historial) ? cliente.historial : [];
+    const pagosInteres = historial.filter(h => 
+      h && (h.tipo === 'interes' || h.tipo === 'interes-capital')
+    );
+    return sum + pagosInteres.reduce((s, p) => s + (p.interesPagado || p.monto || 0), 0);
+  }, 0);
+
+  // Top 5 deudores
+  const topDeudores = [...clientesValidos]
+    .sort((a, b) => (b.capitalActual || 0) - (a.capitalActual || 0))
+    .slice(0, 5);
+
+  // Actividad reciente (últimos 7 días) - CORREGIDO
+  const hace7Dias = new Date();
+  hace7Dias.setDate(hace7Dias.getDate() - 7);
+  
+  let pagosRecientes = 0;
+  clientesValidos.forEach(cliente => {
+    const historial = Array.isArray(cliente.historial) ? cliente.historial : [];
+    historial.forEach(h => {
+      if (h && h.fecha && h.tipo !== 'inicio') {
+        try {
+          const [dia, mes, anio] = h.fecha.split('/');
+          if (dia && mes && anio) {
+            const fechaPago = new Date(`${anio}-${mes}-${dia}`);
+            if (!isNaN(fechaPago.getTime()) && fechaPago >= hace7Dias) {
+              pagosRecientes++;
+            }
+          }
+        } catch (error) {
+          // Ignorar fechas con formato incorrecto
+        }
+      }
+    });
+  });
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color = "indigo" }) => (
     <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 hover:shadow-xl transition">
@@ -246,7 +443,7 @@ function Dashboard({ clientes }) {
         <StatCard icon={Users} title="Total Clientes" value={totalClientes} subtitle="Clientes activos" color="blue" />
         <StatCard icon={DollarSign} title="Capital en Préstamos" value={`$${capitalTotal.toFixed(2)}`} subtitle="Capital actual" color="green" />
         <StatCard icon={TrendingUp} title="Total Recaudado" value={`$${totalRecaudado.toFixed(2)}`} subtitle="Pagos recibidos" color="indigo" />
-        <StatCard icon={PieChart} title="Intereses a Cobrar" value={`$${interesesTotales.toFixed(2)}`} subtitle="Próximo período" color="orange" />
+        <StatCard icon={PieChart} title="Intereses a Cobrar" value={`$${interesesProximoPeriodo.toFixed(2)}`} subtitle="Próximo período" color="orange" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -258,6 +455,7 @@ function Dashboard({ clientes }) {
             <div>
               <h3 className="text-gray-600 text-xs md:text-sm font-semibold">Ganancia Mensual</h3>
               <p className="text-lg md:text-2xl font-bold text-gray-800">${gananciaEstimadaMensual.toFixed(2)}</p>
+              <p className="text-xs text-gray-500">Estimado (10% mensual)</p>
             </div>
           </div>
         </div>
@@ -268,8 +466,9 @@ function Dashboard({ clientes }) {
               <CheckCircle className="text-green-600" size={20} />
             </div>
             <div>
-              <h3 className="text-gray-600 text-xs md:text-sm font-semibold">Total Invertido</h3>
-              <p className="text-lg md:text-2xl font-bold text-gray-800">${capitalInvertido.toFixed(2)}</p>
+              <h3 className="text-gray-600 text-xs md:text-sm font-semibold">Intereses Cobrados</h3>
+              <p className="text-lg md:text-2xl font-bold text-gray-800">${totalInteresesPagados.toFixed(2)}</p>
+              <p className="text-xs text-gray-500">Total histórico</p>
             </div>
           </div>
         </div>
@@ -280,8 +479,9 @@ function Dashboard({ clientes }) {
               <Clock className="text-blue-600" size={20} />
             </div>
             <div>
-              <h3 className="text-gray-600 text-xs md:text-sm font-semibold">Ganancia Neta</h3>
-              <p className="text-lg md:text-2xl font-bold text-gray-800">${(totalRecaudado - capitalInvertido).toFixed(2)}</p>
+              <h3 className="text-gray-600 text-xs md:text-sm font-semibold">Actividad Reciente</h3>
+              <p className="text-lg md:text-2xl font-bold text-gray-800">{pagosRecientes}</p>
+              <p className="text-xs text-gray-500">Últimos 7 días</p>
             </div>
           </div>
         </div>
@@ -296,7 +496,7 @@ function Dashboard({ clientes }) {
         {topDeudores.length > 0 ? (
           <div className="space-y-2 md:space-y-3">
             {topDeudores.map((cliente, idx) => {
-              const interes = cliente.capitalActual * (cliente.tasaInteres / 100);
+              const interes = (cliente.capitalActual || 0) * ((cliente.tasaInteres || 5) / 100);
               return (
                 <div key={cliente.id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 md:gap-4">
@@ -309,7 +509,7 @@ function Dashboard({ clientes }) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-base md:text-xl font-bold text-indigo-600">${cliente.capitalActual.toFixed(2)}</p>
+                    <p className="text-base md:text-xl font-bold text-indigo-600">${(cliente.capitalActual || 0).toFixed(2)}</p>
                     <p className="text-xs md:text-sm text-orange-600">Int: ${interes.toFixed(2)}</p>
                   </div>
                 </div>
@@ -319,6 +519,25 @@ function Dashboard({ clientes }) {
         ) : (
           <p className="text-center text-gray-500 py-8">No hay clientes registrados</p>
         )}
+      </div>
+
+      {/* Ganancia Neta */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-lg p-4 md:p-6 text-white">
+        <h3 className="text-xl md:text-2xl font-bold mb-4">💡 Resumen Financiero</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <p className="opacity-90 mb-1 text-sm">Capital Invertido</p>
+            <p className="text-2xl font-bold">${capitalInvertido.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="opacity-90 mb-1 text-sm">Total Recaudado</p>
+            <p className="text-2xl font-bold">${totalRecaudado.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="opacity-90 mb-1 text-sm">Ganancia Neta</p>
+            <p className="text-2xl font-bold">${(totalRecaudado - capitalInvertido).toFixed(2)}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -377,7 +596,7 @@ function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total pagado:</span>
-                    <span className="font-bold text-green-600">${cliente.totalPagado?.toFixed(2) || '0.00'}</span>
+                    <span className="font-bold text-green-600">${(cliente.totalPagado || 0).toFixed(2)}</span>
                   </div>
                 </div>
                 <button className="w-full mt-3 md:mt-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 text-sm md:text-base">
@@ -436,7 +655,7 @@ function DetalleCliente({ cliente, onVolver, onRegistrarPago, onReenganche, onEl
           </div>
           <div className="bg-green-50 p-3 md:p-4 rounded-lg">
             <p className="text-xs md:text-sm text-gray-600 mb-1">Total Pagado</p>
-            <p className="text-xl md:text-2xl font-bold text-green-600">${cliente.totalPagado?.toFixed(2) || '0.00'}</p>
+            <p className="text-xl md:text-2xl font-bold text-green-600">${(cliente.totalPagado || 0).toFixed(2)}</p>
           </div>
         </div>
 
@@ -484,13 +703,13 @@ function DetalleCliente({ cliente, onVolver, onRegistrarPago, onReenganche, onEl
                   </div>
                   <div className="text-right">
                     {h.tipo !== 'reenganche' && (
-                      <p className="font-bold text-green-600 text-sm md:text-base">${h.monto?.toFixed(2) || '0.00'}</p>
+                      <p className="font-bold text-green-600 text-sm md:text-base">${(h.monto || 0).toFixed(2)}</p>
                     )}
                     {h.tipo === 'reenganche' && (
-                      <p className="font-bold text-orange-600 text-sm md:text-base">+${h.montoReenganche?.toFixed(2) || '0.00'}</p>
+                      <p className="font-bold text-orange-600 text-sm md:text-base">+${(h.montoReenganche || 0).toFixed(2)}</p>
                     )}
                     <p className="text-xs md:text-sm text-gray-600">
-                      Capital: ${h.capitalDespues?.toFixed(2) || '0.00'}
+                      Capital: ${(h.capitalDespues || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -518,6 +737,10 @@ function FormularioCliente({ onGuardar, onCancelar }) {
   const guardar = () => {
     if (!nombre || !capitalInicial) {
       alert('Por favor completa todos los campos');
+      return;
+    }
+    if (isNaN(parseFloat(capitalInicial)) || parseFloat(capitalInicial) <= 0) {
+      alert('El capital debe ser un número mayor a 0');
       return;
     }
     onGuardar({ nombre, capitalInicial: parseFloat(capitalInicial) });
@@ -578,12 +801,17 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
       return;
     }
     
-    // Convertir fecha al formato DD/MM/YYYY
     const [year, month, day] = fechaPago.split('-');
     const fechaFormateada = `${day}/${month}/${year}`;
     
     const montoNum = parseFloat(monto || 0);
     const abonoNum = parseFloat(abonoCapital || 0);
+    
+    if (isNaN(montoNum) || isNaN(abonoNum)) {
+      alert('Los montos deben ser números válidos');
+      return;
+    }
+    
     onGuardar(
       cliente.id, 
       abonoNum > 0 ? 'interes-capital' : 'interes', 
@@ -660,11 +888,16 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
       return;
     }
     
-    // Convertir fecha al formato DD/MM/YYYY
+    const montoNum = parseFloat(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      alert('El monto debe ser un número mayor a 0');
+      return;
+    }
+    
     const [year, month, day] = fechaReenganche.split('-');
     const fechaFormateada = `${day}/${month}/${year}`;
     
-    onGuardar(cliente.id, parseFloat(monto), fechaFormateada);
+    onGuardar(cliente.id, montoNum, fechaFormateada);
     onCerrar();
   };
 
