@@ -576,6 +576,7 @@ function Dashboard({ clientes }) {
     </div>
   );
 }
+}
 
 function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
   return (
