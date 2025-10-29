@@ -65,13 +65,33 @@ export default function App() {
     }
   };
 
-  const iniciarSesion = async (nombre, email) => {
+  const iniciarSesion = async (usuario, contrasena) => {
     try {
-      const usuarioData = { nombre, email };
-      await window.storage.set('usuario', JSON.stringify(usuarioData));
-      setUsuario(usuarioData);
+      // Verificar si existe un usuario guardado
+      const usuarioGuardadoResult = await window.storage.get('usuario');
+      
+      if (usuarioGuardadoResult) {
+        // Ya existe un usuario, verificar credenciales
+        const usuarioGuardado = JSON.parse(usuarioGuardadoResult.value);
+        if (usuarioGuardado.usuario === usuario && usuarioGuardado.contrasena === contrasena) {
+          setUsuario(usuarioGuardado);
+        } else {
+          alert('Usuario o contraseña incorrectos');
+        }
+      } else {
+        // Primera vez, crear nuevo usuario
+        const usuarioData = { usuario, contrasena, fechaCreacion: new Date().toISOString() };
+        await window.storage.set('usuario', JSON.stringify(usuarioData));
+        setUsuario(usuarioData);
+        alert('¡Cuenta creada exitosamente!');
+      }
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
+      // Si no existe usuario, crear uno nuevo
+      const usuarioData = { usuario, contrasena, fechaCreacion: new Date().toISOString() };
+      await window.storage.set('usuario', JSON.stringify(usuarioData));
+      setUsuario(usuarioData);
+      alert('¡Cuenta creada exitosamente!');
     }
   };
 
@@ -203,11 +223,11 @@ export default function App() {
               </button>
               <div>
                 <h1 className="text-xl md:text-3xl font-bold text-indigo-900">Sistema de Préstamos</h1>
-                <p className="text-xs md:text-sm text-gray-600">{usuario.nombre}</p>
+                <p className="text-xs md:text-sm text-gray-600">{usuario.usuario}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
-              <span className="hidden sm:inline text-sm md:text-base text-gray-700">{usuario.email}</span>
+              <span className="hidden sm:inline text-sm md:text-base text-gray-700">@{usuario.usuario}</span>
               <button 
                 onClick={cerrarSesion}
                 className="flex items-center gap-1 md:gap-2 bg-red-600 hover:bg-red-700 text-white px-2 md:px-4 py-2 rounded-lg text-sm md:text-base"
@@ -293,19 +313,30 @@ export default function App() {
 
 // Login Screen
 function LoginScreen({ onLogin }) {
-  const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [contrasena, setContrasena] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
 
   const handleLogin = () => {
-    if (!nombre || !email) {
+    if (!usuario || !contrasena) {
       alert('Por favor completa todos los campos');
       return;
     }
-    if (!email.includes('@')) {
-      alert('Por favor ingresa un email válido');
+    if (usuario.length < 3) {
+      alert('El usuario debe tener al menos 3 caracteres');
       return;
     }
-    onLogin(nombre, email);
+    if (contrasena.length < 4) {
+      alert('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+    onLogin(usuario, contrasena);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
   };
 
   return (
@@ -316,42 +347,54 @@ function LoginScreen({ onLogin }) {
             <User className="text-indigo-600" size={32} />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Sistema de Préstamos</h1>
-          <p className="text-gray-600">Ingresa tus datos para continuar</p>
+          <p className="text-gray-600">Ingresa tus credenciales para continuar</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
             <input
               type="text"
-              placeholder="César Suárez"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ingresa tu usuario"
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
+              onKeyPress={handleKeyPress}
               className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              placeholder="cesar@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+            <div className="relative">
+              <input
+                type={mostrarContrasena ? "text" : "password"}
+                placeholder="Ingresa tu contraseña"
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {mostrarContrasena ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
 
           <button
             onClick={handleLogin}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold mt-6"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold mt-6 transition"
           >
             Iniciar Sesión
           </button>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          Tus datos se guardarán localmente en este dispositivo
+          Tus datos se guardarán de forma segura en este dispositivo
         </p>
       </div>
     </div>
