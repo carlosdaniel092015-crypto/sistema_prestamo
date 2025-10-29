@@ -862,6 +862,16 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
       abonoCapital = Math.max(0, montoNum - interesActual);
     }
     
+    console.log('Guardando pago:', {
+      clienteId: cliente.id,
+      tipo: tipoPago,
+      monto: montoNum,
+      interesPagado,
+      abonoCapital,
+      capitalActual: cliente.capitalActual,
+      nuevoCapital: cliente.capitalActual - abonoCapital
+    });
+    
     onGuardar(cliente.id, tipoPago, montoNum, interesPagado, abonoCapital, fechaFinal);
     onCerrar();
   };
@@ -1348,6 +1358,7 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
 
 
 
