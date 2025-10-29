@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, User, LogIn, UserPlus } from 'lucide-react';
+import { Lock, Mail, LogIn, UserPlus } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from './firebase';
 
@@ -68,50 +68,50 @@ export default function Login({ onLoginSuccess }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md">
         {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="text-white" size={32} />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="bg-indigo-600 w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <Lock className="text-white" size={28} />
           </div>
-          <h1 className="text-3xl font-bold text-indigo-900">
+          <h1 className="text-2xl sm:text-3xl font-bold text-indigo-900">
             Sistema de Préstamos
           </h1>
-          <p className="text-gray-600 mt-2">César Suárez</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">César Suárez</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4 sm:mb-6">
           <button
             onClick={() => setEsRegistro(false)}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+            className={`flex-1 py-2 px-3 sm:px-4 rounded-lg font-semibold transition text-sm sm:text-base ${
               !esRegistro
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            <LogIn className="inline mr-2" size={18} />
+            <LogIn className="inline mr-1 sm:mr-2" size={16} />
             Iniciar Sesión
           </button>
           <button
             onClick={() => setEsRegistro(true)}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+            className={`flex-1 py-2 px-3 sm:px-4 rounded-lg font-semibold transition text-sm sm:text-base ${
               esRegistro
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            <UserPlus className="inline mr-2" size={18} />
+            <UserPlus className="inline mr-1 sm:mr-2" size={16} />
             Registrarse
           </button>
         </div>
 
         {/* Formulario */}
-        <form onSubmit={manejarSubmit} className="space-y-4">
+        <form onSubmit={manejarSubmit} className="space-y-3 sm:space-y-4">
           {/* Email */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              <Mail className="inline mr-2" size={18} />
+            <label className="block text-gray-700 font-semibold mb-2 text-sm sm:text-base">
+              <Mail className="inline mr-2" size={16} />
               Correo Electrónico
             </label>
             <input
@@ -119,7 +119,7 @@ export default function Login({ onLoginSuccess }) {
               required
               value={formulario.email}
               onChange={(e) => setFormulario({ ...formulario, email: e.target.value })}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-indigo-500 focus:outline-none transition"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-indigo-500 focus:outline-none transition text-sm sm:text-base"
               placeholder="tu@email.com"
               disabled={cargando}
             />
@@ -127,8 +127,8 @@ export default function Login({ onLoginSuccess }) {
 
           {/* Password */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              <Lock className="inline mr-2" size={18} />
+            <label className="block text-gray-700 font-semibold mb-2 text-sm sm:text-base">
+              <Lock className="inline mr-2" size={16} />
               Contraseña
             </label>
             <input
@@ -136,7 +136,7 @@ export default function Login({ onLoginSuccess }) {
               required
               value={formulario.password}
               onChange={(e) => setFormulario({ ...formulario, password: e.target.value })}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-indigo-500 focus:outline-none transition"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-indigo-500 focus:outline-none transition text-sm sm:text-base"
               placeholder="••••••••"
               disabled={cargando}
             />
@@ -145,8 +145,8 @@ export default function Login({ onLoginSuccess }) {
           {/* Confirmar Password (solo en registro) */}
           {esRegistro && (
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                <Lock className="inline mr-2" size={18} />
+              <label className="block text-gray-700 font-semibold mb-2 text-sm sm:text-base">
+                <Lock className="inline mr-2" size={16} />
                 Confirmar Contraseña
               </label>
               <input
@@ -154,7 +154,7 @@ export default function Login({ onLoginSuccess }) {
                 required
                 value={formulario.confirmarPassword}
                 onChange={(e) => setFormulario({ ...formulario, confirmarPassword: e.target.value })}
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-indigo-500 focus:outline-none transition"
+                className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:border-indigo-500 focus:outline-none transition text-sm sm:text-base"
                 placeholder="••••••••"
                 disabled={cargando}
               />
@@ -165,23 +165,23 @@ export default function Login({ onLoginSuccess }) {
           <button
             type="submit"
             disabled={cargando}
-            className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 ${
+            className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 sm:py-3 rounded-lg transition flex items-center justify-center gap-2 text-sm sm:text-base ${
               cargando ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
             {cargando ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
                 Procesando...
               </>
             ) : esRegistro ? (
               <>
-                <UserPlus size={20} />
+                <UserPlus size={18} />
                 Crear Cuenta
               </>
             ) : (
               <>
-                <LogIn size={20} />
+                <LogIn size={18} />
                 Iniciar Sesión
               </>
             )}
@@ -189,7 +189,7 @@ export default function Login({ onLoginSuccess }) {
         </form>
 
         {/* Información adicional */}
-        <div className="mt-6 text-center text-sm text-gray-600">
+        <div className="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-gray-600">
           {esRegistro ? (
             <p>
               Al registrarte, podrás acceder al sistema completo de gestión de préstamos
