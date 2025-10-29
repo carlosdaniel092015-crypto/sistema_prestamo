@@ -525,8 +525,7 @@ function ListaClientes({ clientes, onSeleccionar, onAgregar }) {
       </div>
 
       {clientes.length === 0 ? (
-        <div className="bg-
-          <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 text-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 sm:p-12 text-center">
           <Users size={48} className="sm:w-16 sm:h-16 mx-auto text-gray-400 mb-3 sm:mb-4" />
           <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-2">No hay clientes registrados</h3>
           <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">Comienza agregando tu primer cliente</p>
@@ -1015,3 +1014,4 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
