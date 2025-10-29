@@ -150,6 +150,7 @@ export default function App() {
     const nuevosClientes = clientes.filter(c => c.id !== clienteId);
     guardarClientes(nuevosClientes);
     setClienteSeleccionado(null);
+    setVistaActual('clientes'); // Volver a la lista de clientes
     alert('Cliente eliminado exitosamente');
   };
 
