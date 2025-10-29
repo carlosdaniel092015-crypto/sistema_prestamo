@@ -783,11 +783,18 @@ function FormularioCliente({ onGuardar, onCancelar }) {
   );
 }
 
-// ==================== MODAL PAGO ====================
+/ ==================== MODAL PAGO ====================
 function ModalPago({ cliente, onGuardar, onCerrar }) {
   const [monto, setMonto] = useState('');
   const [abonoCapital, setAbonoCapital] = useState('');
   const [fechaPersonalizada, setFechaPersonalizada] = useState('');
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   const guardar = () => {
     if (!monto && !abonoCapital) {
@@ -808,46 +815,63 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Registrar Pago</h3>
-        <div className="space-y-2 sm:space-y-3">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl w-full max-w-md my-8 animate-[slideDown_0.2s_ease-out]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-800">Registrar Pago</h3>
+          <button 
+            onClick={onCerrar}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Fecha (opcional)</label>
             <input
               type="date"
               value={fechaPersonalizada}
               onChange={(e) => setFechaPersonalizada(e.target.value)}
-              className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
             />
             <p className="text-xs text-gray-500 mt-1">Deja vacío para usar la fecha actual</p>
           </div>
-          <input
-            type="number"
-            placeholder="Monto de interés"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
-          />
-          <input
-            type="number"
-            placeholder="Abono a capital (opcional)"
-            value={abonoCapital}
-            onChange={(e) => setAbonoCapital(e.target.value)}
-            className="w-full border rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
-          />
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Monto de interés</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+            />
+          </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Abono a capital (opcional)</label>
+            <input
+              type="number"
+              placeholder="0.00"
+              value={abonoCapital}
+              onChange={(e) => setAbonoCapital(e.target.value)}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+            />
+          </div>
         </div>
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
+        
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
           <button 
             onClick={onCerrar} 
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-sm sm:text-base"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm sm:text-base font-semibold"
           >
             Cancelar
           </button>
           <button 
             onClick={guardar} 
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
           >
+            <CheckCircle size={16} />
             Guardar
           </button>
         </div>
@@ -1130,3 +1154,4 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
