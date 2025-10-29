@@ -414,7 +414,6 @@ function Login({ onLoginSuccess }) {
 function Dashboard({ clientes }) {
   const totalClientes = clientes.length;
   const capitalTotal = clientes.reduce((sum, c) => sum + c.capitalActual, 0);
-  const capitalInvertido = clientes.reduce((sum, c) => sum + c.capitalInicial, 0);
   const totalRecaudado = clientes.reduce((sum, c) => sum + c.totalPagado, 0);
   const interesesTotales = clientes.reduce((sum, c) => sum + c.capitalActual * (c.tasaInteres / 100), 0);
   const gananciaEstimadaMensual = clientes.reduce((sum, c) => sum + (c.capitalActual * 0.10), 0);
@@ -423,6 +422,9 @@ function Dashboard({ clientes }) {
     const pagosInteres = cliente.historial.filter(h => h.tipo === 'interes' || h.tipo === 'interes-capital');
     return sum + pagosInteres.reduce((s, p) => s + (p.interesPagado || p.monto), 0);
   }, 0);
+  
+  // Ganancia Neta = Total Recaudado - Capital que aún está en préstamo
+  const gananciaNeta = totalRecaudado - capitalTotal;
 
   const topDeudores = [...clientes].sort((a, b) => b.capitalActual - a.capitalActual).slice(0, 5);
 
@@ -487,12 +489,12 @@ function Dashboard({ clientes }) {
             </div>
             <div className="min-w-0">
               <h3 className="text-gray-600 text-xs sm:text-sm font-semibold">Ganancia Neta</h3>
-              <p className={`text-lg sm:text-xl lg:text-2xl font-bold break-words ${totalRecaudado - capitalInvertido >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ${(totalRecaudado - capitalInvertido).toFixed(2)}
+              <p className={`text-lg sm:text-xl lg:text-2xl font-bold break-words ${gananciaNeta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${gananciaNeta.toFixed(2)}
               </p>
             </div>
           </div>
-          <div className="text-xs sm:text-sm text-gray-500">Total - Invertido</div>
+          <div className="text-xs sm:text-sm text-gray-500">Recaudado - Capital prestado</div>
         </div>
       </div>
 
