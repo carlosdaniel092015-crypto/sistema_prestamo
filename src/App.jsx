@@ -808,8 +808,8 @@ function FormularioCliente({ onGuardar, onCancelar }) {
 
 // ==================== MODAL PAGO ====================
 function ModalPago({ cliente, onGuardar, onCerrar }) {
+  const [tipoPago, setTipoPago] = useState('interes'); // 'interes', 'capital', 'interes-capital'
   const [monto, setMonto] = useState('');
-  const [abonoCapital, setAbonoCapital] = useState('');
   const [fechaPersonalizada, setFechaPersonalizada] = useState('');
 
   useEffect(() => {
@@ -819,21 +819,40 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
     };
   }, []);
 
+  const interesActual = cliente.capitalActual * (cliente.tasaInteres / 100);
+
   const guardar = () => {
-    if (!monto && !abonoCapital) {
-      alert('Debe ingresar al menos un monto');
+    if (!fechaPersonalizada) {
+      alert('La fecha es obligatoria');
       return;
     }
-    const montoNum = parseFloat(monto || 0);
-    const abonoNum = parseFloat(abonoCapital || 0);
-    
-    let fechaFinal = null;
-    if (fechaPersonalizada) {
-      const [year, month, day] = fechaPersonalizada.split('-');
-      fechaFinal = `${day}/${month}/${year}`;
+    if (!monto || parseFloat(monto) <= 0) {
+      alert('Debe ingresar un monto válido');
+      return;
     }
     
-    onGuardar(cliente.id, abonoNum > 0 ? 'interes-capital' : 'interes', montoNum + abonoNum, montoNum, abonoNum, fechaFinal);
+    const montoNum = parseFloat(monto);
+    const [year, month, day] = fechaPersonalizada.split('-');
+    const fechaFinal = `${day}/${month}/${year}`;
+    
+    let interesPagado = 0;
+    let abonoCapital = 0;
+    
+    if (tipoPago === 'interes') {
+      // Solo pago de interés
+      interesPagado = montoNum;
+      abonoCapital = 0;
+    } else if (tipoPago === 'capital') {
+      // Solo abono a capital
+      interesPagado = 0;
+      abonoCapital = montoNum;
+    } else if (tipoPago === 'interes-capital') {
+      // Pago de interés + capital (automático)
+      interesPagado = Math.min(montoNum, interesActual);
+      abonoCapital = Math.max(0, montoNum - interesActual);
+    }
+    
+    onGuardar(cliente.id, tipoPago, montoNum, interesPagado, abonoCapital, fechaFinal);
     onCerrar();
   };
 
@@ -851,35 +870,126 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
         </div>
         
         <div className="space-y-3 sm:space-y-4">
+          {/* Información del cliente */}
+          <div className="bg-indigo-50 p-3 rounded-lg">
+            <p className="text-xs text-gray-600 mb-1">Cliente: <span className="font-bold text-gray-800">{cliente.nombre}</span></p>
+            <p className="text-xs text-gray-600 mb-1">Capital actual: <span className="font-bold text-indigo-600">${cliente.capitalActual.toFixed(2)}</span></p>
+            <p className="text-xs text-gray-600">Interés a cobrar ({cliente.tasaInteres}%): <span className="font-bold text-orange-600">${interesActual.toFixed(2)}</span></p>
+          </div>
+
+          {/* Fecha obligatoria */}
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Fecha (opcional)</label>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Fecha del pago <span className="text-red-600">*</span>
+            </label>
             <input
               type="date"
               value={fechaPersonalizada}
               onChange={(e) => setFechaPersonalizada(e.target.value)}
               className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+              required
             />
-            <p className="text-xs text-gray-500 mt-1">Deja vacío para usar la fecha actual</p>
           </div>
+
+          {/* Tipo de pago */}
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Monto de interés</label>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+              Tipo de pago <span className="text-red-600">*</span>
+            </label>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setTipoPago('interes')}
+                className={`w-full p-3 rounded-lg border-2 text-left transition ${
+                  tipoPago === 'interes' 
+                    ? 'border-green-500 bg-green-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">💰 Solo Interés</p>
+                    <p className="text-xs text-gray-600">Pago únicamente del interés generado</p>
+                  </div>
+                  {tipoPago === 'interes' && <CheckCircle className="text-green-600" size={20} />}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTipoPago('capital')}
+                className={`w-full p-3 rounded-lg border-2 text-left transition ${
+                  tipoPago === 'capital' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">💵 Solo Capital</p>
+                    <p className="text-xs text-gray-600">Abono directo al capital prestado</p>
+                  </div>
+                  {tipoPago === 'capital' && <CheckCircle className="text-blue-600" size={20} />}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTipoPago('interes-capital')}
+                className={`w-full p-3 rounded-lg border-2 text-left transition ${
+                  tipoPago === 'interes-capital' 
+                    ? 'border-indigo-500 bg-indigo-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">💎 Interés + Capital</p>
+                    <p className="text-xs text-gray-600">Se descuenta interés primero, resto va a capital</p>
+                  </div>
+                  {tipoPago === 'interes-capital' && <CheckCircle className="text-indigo-600" size={20} />}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Monto */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+              Monto a pagar <span className="text-red-600">*</span>
+            </label>
             <input
               type="number"
+              step="0.01"
               placeholder="0.00"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
               className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
+              required
             />
-          </div>
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Abono a capital (opcional)</label>
-            <input
-              type="number"
-              placeholder="0.00"
-              value={abonoCapital}
-              onChange={(e) => setAbonoCapital(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-lg px-3 sm:px-4 py-2 focus:outline-none focus:border-indigo-500 transition text-sm sm:text-base"
-            />
+            
+            {/* Vista previa del pago */}
+            {monto && parseFloat(monto) > 0 && (
+              <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Vista previa:</p>
+                {tipoPago === 'interes' && (
+                  <p className="text-xs text-gray-600">✓ Interés pagado: ${parseFloat(monto).toFixed(2)}</p>
+                )}
+                {tipoPago === 'capital' && (
+                  <p className="text-xs text-gray-600">✓ Abono a capital: ${parseFloat(monto).toFixed(2)}</p>
+                )}
+                {tipoPago === 'interes-capital' && (
+                  <>
+                    <p className="text-xs text-gray-600">
+                      ✓ Interés: ${Math.min(parseFloat(monto), interesActual).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      ✓ Capital: ${Math.max(0, parseFloat(monto) - interesActual).toFixed(2)}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
         
@@ -895,7 +1005,7 @@ function ModalPago({ cliente, onGuardar, onCerrar }) {
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm sm:text-base font-semibold flex items-center justify-center gap-2"
           >
             <CheckCircle size={16} />
-            Guardar
+            Registrar Pago
           </button>
         </div>
       </div>
@@ -1215,4 +1325,5 @@ function HistorialEliminados({ historial, onEliminarDelHistorial, onRestaurar })
     </div>
   );
 }
+
 
