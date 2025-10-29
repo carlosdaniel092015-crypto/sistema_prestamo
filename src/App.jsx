@@ -37,19 +37,26 @@ export default function App() {
     try {
       setLoading(true);
       
-      // Cargar usuario
+     // Cargar usuario
+     try {
       const usuarioResult = await window.storage.get('usuario');
-      if (usuarioResult) {
+      if (usuarioResult && usuarioResult.value) {
         setUsuario(JSON.parse(usuarioResult.value));
       }
-
-      // Cargar clientes
+    } catch (error) {
+      console.log('No hay usuario guardado');
+    }
+     // Cargar clientes
+     try {
       const clientesResult = await window.storage.get('clientes');
-      if (clientesResult) {
+      if (clientesResult && clientesResult.value) {
         setClientes(JSON.parse(clientesResult.value));
       }
     } catch (error) {
-      console.log('Primera vez usando la app, no hay datos guardados');
+      console.log('No hay clientes guardados');
+     }
+    } catch (error) {
+      console.log('Error cargando datos:', error);
     } finally {
       setLoading(false);
     }
@@ -67,12 +74,20 @@ export default function App() {
 
   const iniciarSesion = async (usuario, contrasena) => {
     try {
-      // Verificar si existe un usuario guardado
-      const usuarioGuardadoResult = await window.storage.get('usuario');
+      // Intentar obtener el usuario guardado
+      let usuarioGuardado = null;
       
-      if (usuarioGuardadoResult) {
+      try {
+        const usuarioGuardadoResult = await window.storage.get('usuario');
+        if (usuarioGuardadoResult && usuarioGuardadoResult.value) {
+          usuarioGuardado = JSON.parse(usuarioGuardadoResult.value);
+        }
+      } catch (error) {
+        console.log('No hay usuario guardado, creando uno nuevo');
+      }
+
+      if (usuarioGuardado) {
         // Ya existe un usuario, verificar credenciales
-        const usuarioGuardado = JSON.parse(usuarioGuardadoResult.value);
         if (usuarioGuardado.usuario === usuario && usuarioGuardado.contrasena === contrasena) {
           setUsuario(usuarioGuardado);
         } else {
@@ -92,8 +107,12 @@ export default function App() {
       await window.storage.set('usuario', JSON.stringify(usuarioData));
       setUsuario(usuarioData);
       alert('¡Cuenta creada exitosamente!');
-    }
-  };
+     }
+   } catch (error) {
+     console.error('Error al iniciar sesión:', error);
+     alert('Error al procesar el inicio de sesión. Por favor intenta de nuevo.');
+   }
+ };
 
   const cerrarSesion = async () => {
     if (confirm('¿Estás seguro de cerrar sesión?')) {
@@ -986,3 +1005,4 @@ function ModalReenganche({ cliente, onGuardar, onCerrar }) {
     </div>
   );
 }
+
