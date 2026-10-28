@@ -5,7 +5,7 @@ import { getAnalytics } from "firebase/analytics";
 
 // Tu configuración de Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAVXRoD5Q1jpN46s5GLpvjD817fFjB9Xg8",
+  apiKey: "coloca",
   authDomain: "cesar-prestamo.firebaseapp.com",
   projectId: "cesar-prestamo",
   storageBucket: "cesar-prestamo.firebasestorage.app",
